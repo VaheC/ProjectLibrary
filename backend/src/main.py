@@ -596,5 +596,53 @@ async def update_project_info(
                 detail=f"An error occurred while updating the project: {str(e)}"
             )
 
+@app.delete("/project/{project_id}")
+async def delete_project(
+    project_id: int,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Delete a project and all associated documents.
+    Only the project owner can delete the project.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            # Get the project
+            stmt = select(Project).where(Project.project_id == project_id)
+            result = await db.execute(stmt)
+            project = result.scalar_one_or_none()
+            
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found"
+                )
+            
+            # Check if current user is the owner
+            if project.user_id != current_user.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only the project owner can delete this project"
+                )
+            
+            # Delete the project (cascade will handle documents and shared_projects)
+            await db.delete(project)
+            await db.commit()
+            
+            return {
+                "message": f"Project '{project.name}' deleted successfully",
+                "project_id": project_id
+            }
+            
+        except HTTPException:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while deleting the project: {str(e)}"
+            )
+
 
 
