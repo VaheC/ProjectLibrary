@@ -950,3 +950,105 @@ async def get_project_documents(
 #                 status_code=500,
 #                 detail=f"An error occurred while downloading the document: {str(e)}"
 #             )
+
+# @app.put("/document/{document_id}", response_model=DocumentResponse)
+# async def update_document(
+#     document_id: int,
+#     file: UploadFile = File(...),
+#     current_user: TokenData = Depends(get_current_user)
+# ):
+#     """
+#     Update an existing document by replacing it with a new file in S3.
+#     Access is granted if user owns the project containing this document.
+#     """
+#     async with AsyncSessionLocal() as db:
+#         try:
+#             # Get the document with project info
+#             doc_stmt = (
+#                 select(Document)
+#                 .where(Document.document_id == document_id)
+#             )
+#             doc_result = await db.execute(doc_stmt)
+#             document = doc_result.scalar_one_or_none()
+            
+#             if not document:
+#                 raise HTTPException(
+#                     status_code=404,
+#                     detail="Document not found"
+#                 )
+            
+#             # Get the associated project
+#             project_stmt = select(Project).where(Project.project_id == document.project_id)
+#             project_result = await db.execute(project_stmt)
+#             project = project_result.scalar_one_or_none()
+            
+#             if not project:
+#                 raise HTTPException(
+#                     status_code=404,
+#                     detail="Associated project not found"
+#                 )
+            
+#             # Check if user is the owner (only owner can update documents)
+#             if project.user_id != current_user.user_id:
+#                 raise HTTPException(
+#                     status_code=403,
+#                     detail="Only the project owner can update documents"
+#                 )
+            
+#             # Extract old S3 key from URL
+#             old_s3_key = document.document_url.split(f"{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/")[-1]
+            
+#             # Generate new unique filename
+#             file_extension = os.path.splitext(file.filename)[1]
+#             new_s3_key = f"projects/{document.project_id}/{uuid.uuid4()}{file_extension}"
+            
+#             # Read file content
+#             file_content = await file.read()
+            
+#             try:
+#                 # Upload new file to S3
+#                 s3_client.put_object(
+#                     Bucket=AWS_S3_BUCKET,
+#                     Key=new_s3_key,
+#                     Body=file_content,
+#                     ContentType=file.content_type or 'application/octet-stream'
+#                 )
+                
+#                 # Delete old file from S3
+#                 s3_client.delete_object(
+#                     Bucket=AWS_S3_BUCKET,
+#                     Key=old_s3_key
+#                 )
+                
+#                 # Generate new S3 URL
+#                 new_document_url = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{new_s3_key}"
+                
+#                 # Update document in database
+#                 document.document_url = new_document_url
+                
+#                 await db.commit()
+#                 await db.refresh(document)
+                
+#                 return DocumentResponse(
+#                     document_id=document.document_id,
+#                     document_url=document.document_url
+#                 )
+                
+#             except ClientError as e:
+#                 await db.rollback()
+#                 raise HTTPException(
+#                     status_code=500,
+#                     detail=f"Failed to update file in S3: {str(e)}"
+#                 )
+#             finally:
+#                 await file.seek(0)
+            
+#         except HTTPException:
+#             await db.rollback()
+#             raise
+#         except Exception as e:
+#             await db.rollback()
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=f"An error occurred while updating the document: {str(e)}"
+#             )
