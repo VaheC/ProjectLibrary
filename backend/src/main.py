@@ -484,5 +484,117 @@ async def get_project_info(
                 detail=f"An error occurred while retrieving the project: {str(e)}"
             )
 
+class ProjectUpdateRequest(BaseModel):
+    name: str
+    description: str
+
+@app.put("/project/{project_id}/info", response_model=ProjectDetailResponse)
+async def update_project_info(
+    project_id: int,
+    update_data: ProjectUpdateRequest,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Update project details (name and description).
+    Only the project owner can update the project.
+    Returns the updated project information.
+    """
+    # Validate project name (minimum 3 characters)
+    if len(update_data.name.strip()) < 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Project name must be at least 3 characters long"
+        )
+    
+    # Validate description (minimum 10 characters)
+    if len(update_data.description.strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Project description must be at least 10 characters long"
+        )
+    
+    async with AsyncSessionLocal() as db:
+        try:
+            # Get the project with eager loading
+            stmt = (
+                select(Project)
+                .options(
+                    selectinload(Project.documents),
+                    selectinload(Project.user)
+                )
+                .where(Project.project_id == project_id)
+            )
+            
+            result = await db.execute(stmt)
+            project = result.scalar_one_or_none()
+            
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found"
+                )
+            
+            # Check if current user is the owner
+            if project.user_id != current_user.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only the project owner can update this project"
+                )
+            
+            # Check if new name conflicts with existing project (excluding current project)
+            name_check_stmt = (
+                select(Project)
+                .where(
+                    Project.name.ilike(update_data.name.strip()),
+                    Project.project_id != project_id
+                )
+            )
+            name_check_result = await db.execute(name_check_stmt)
+            existing_project = name_check_result.scalar_one_or_none()
+            
+            if existing_project:
+                raise HTTPException(
+                    status_code=400,
+                    detail="A project with this name already exists"
+                )
+            
+            # Update project details
+            project.name = update_data.name.strip()
+            project.description = update_data.description.strip()
+            
+            await db.commit()
+            await db.refresh(project)
+            
+            # Build response
+            owner_username = project.user.username if project.user else "Unknown"
+            
+            documents = [
+                DocumentResponse(
+                    document_id=doc.document_id,
+                    document_url=doc.document_url
+                )
+                for doc in project.documents
+            ]
+            
+            return ProjectDetailResponse(
+                project_id=project.project_id,
+                name=project.name,
+                description=project.description,
+                created_at=project.created_at,
+                owner_id=project.user_id,
+                owner_username=owner_username,
+                documents=documents
+            )
+            
+        except HTTPException:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while updating the project: {str(e)}"
+            )
+
 
 
