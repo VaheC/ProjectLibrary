@@ -401,5 +401,88 @@ async def get_user_projects(current_user: TokenData = Depends(get_current_user))
                 detail=f"An error occurred while retrieving projects: {str(e)}"
             )
 
+@app.get("/project/{project_id}/info", response_model=ProjectDetailResponse)
+async def get_project_info(
+    project_id: int,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Get detailed information about a specific project.
+    Returns full project details including its documents.
+    Access is granted if user owns the project or the project is shared with them.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            # Query project with eager loading of documents and owner
+            stmt = (
+                select(Project)
+                .options(
+                    selectinload(Project.documents),
+                    selectinload(Project.user)
+                )
+                .where(Project.project_id == project_id)
+            )
+            
+            result = await db.execute(stmt)
+            project = result.scalar_one_or_none()
+            
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found"
+                )
+            
+            # Check if user has access (owns the project or project is shared with them)
+            # First check if user is the owner
+            has_access = project.user_id == current_user.user_id
+            
+            # If not owner, check if project is shared with the user
+            if not has_access:
+                share_stmt = (
+                    select(SharedProject)
+                    .where(
+                        SharedProject.project_id == project_id,
+                        SharedProject.shared_with_user_id == current_user.user_id
+                    )
+                )
+                share_result = await db.execute(share_stmt)
+                shared_project = share_result.scalar_one_or_none()
+                has_access = shared_project is not None
+            
+            if not has_access:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You do not have access to this project"
+                )
+            
+            # Build response
+            owner_username = project.user.username if project.user else "Unknown"
+            
+            documents = [
+                DocumentResponse(
+                    document_id=doc.document_id,
+                    document_url=doc.document_url
+                )
+                for doc in project.documents
+            ]
+            
+            return ProjectDetailResponse(
+                project_id=project.project_id,
+                name=project.name,
+                description=project.description,
+                created_at=project.created_at,
+                owner_id=project.user_id,
+                owner_username=owner_username,
+                documents=documents
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while retrieving the project: {str(e)}"
+            )
+
 
 
