@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import StreamingResponse
 from .db import Base, User, Project, SharedProject, Document
 from dotenv import load_dotenv
 import os
 import shutil
 import uuid
+import io
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     async_sessionmaker,
@@ -843,4 +845,108 @@ async def get_project_documents(
 #             raise HTTPException(
 #                 status_code=500,
 #                 detail=f"An error occurred while uploading documents: {str(e)}"
+#             )
+
+# @app.get("/document/{document_id}")
+# async def download_document(
+#     document_id: int,
+#     current_user: TokenData = Depends(get_current_user)
+# ):
+#     """
+#     Download a specific document from S3.
+#     Access is granted if user has access to the project containing this document.
+#     """
+#     async with AsyncSessionLocal() as db:
+#         try:
+#             # Get the document with project info
+#             doc_stmt = (
+#                 select(Document)
+#                 .where(Document.document_id == document_id)
+#             )
+#             doc_result = await db.execute(doc_stmt)
+#             document = doc_result.scalar_one_or_none()
+            
+#             if not document:
+#                 raise HTTPException(
+#                     status_code=404,
+#                     detail="Document not found"
+#                 )
+            
+#             # Get the associated project
+#             project_stmt = select(Project).where(Project.project_id == document.project_id)
+#             project_result = await db.execute(project_stmt)
+#             project = project_result.scalar_one_or_none()
+            
+#             if not project:
+#                 raise HTTPException(
+#                     status_code=404,
+#                     detail="Associated project not found"
+#                 )
+            
+#             # Check if user has access (owns the project or project is shared with them)
+#             has_access = project.user_id == current_user.user_id
+            
+#             if not has_access:
+#                 share_stmt = (
+#                     select(SharedProject)
+#                     .where(
+#                         SharedProject.project_id == document.project_id,
+#                         SharedProject.shared_with_user_id == current_user.user_id
+#                     )
+#                 )
+#                 share_result = await db.execute(share_stmt)
+#                 shared_project = share_result.scalar_one_or_none()
+#                 has_access = shared_project is not None
+            
+#             if not has_access:
+#                 raise HTTPException(
+#                     status_code=403,
+#                     detail="You do not have access to this document"
+#                 )
+            
+#             # Extract S3 key from URL
+#             # URL format: https://bucket.s3.region.amazonaws.com/projects/{project_id}/{filename}
+#             s3_key = document.document_url.split(f"{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/")[-1]
+            
+#             try:
+#                 # Get file from S3
+#                 response = s3_client.get_object(
+#                     Bucket=AWS_S3_BUCKET,
+#                     Key=s3_key
+#                 )
+                
+#                 # Get file content and determine content type
+#                 file_content = response['Body'].read()
+#                 content_type = response.get('ContentType', 'application/octet-stream')
+                
+#                 # Extract filename from S3 key
+#                 filename = s3_key.split('/')[-1]
+                
+#                 # Return file as streaming response
+#                 return StreamingResponse(
+#                     io.BytesIO(file_content),
+#                     media_type=content_type,
+#                     headers={
+#                         "Content-Disposition": f"attachment; filename={filename}"
+#                     }
+#                 )
+                
+#             except ClientError as e:
+#                 if e.response['Error']['Code'] == 'NoSuchKey':
+#                     raise HTTPException(
+#                         status_code=404,
+#                         detail="File not found in S3 storage"
+#                     )
+#                 else:
+#                     raise HTTPException(
+#                         status_code=500,
+#                         detail=f"Error retrieving file from S3: {str(e)}"
+#                     )
+            
+#         except HTTPException:
+#             raise
+#         except Exception as e:
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=f"An error occurred while downloading the document: {str(e)}"
 #             )
