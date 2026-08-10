@@ -644,5 +644,73 @@ async def delete_project(
                 detail=f"An error occurred while deleting the project: {str(e)}"
             )
 
+@app.get("/project/{project_id}/documents", response_model=List[DocumentResponse])
+async def get_project_documents(
+    project_id: int,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Get all documents associated with a specific project.
+    Access is granted if user owns the project or the project is shared with them.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            # First, check if the project exists and user has access
+            project_stmt = select(Project).where(Project.project_id == project_id)
+            project_result = await db.execute(project_stmt)
+            project = project_result.scalar_one_or_none()
+            
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found"
+                )
+            
+            # Check if user has access (owns the project or project is shared with them)
+            has_access = project.user_id == current_user.user_id
+            
+            if not has_access:
+                share_stmt = (
+                    select(SharedProject)
+                    .where(
+                        SharedProject.project_id == project_id,
+                        SharedProject.shared_with_user_id == current_user.user_id
+                    )
+                )
+                share_result = await db.execute(share_stmt)
+                shared_project = share_result.scalar_one_or_none()
+                has_access = shared_project is not None
+            
+            if not has_access:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You do not have access to this project"
+                )
+            
+            # Get all documents for the project
+            doc_stmt = (
+                select(Document)
+                .where(Document.project_id == project_id)
+                .order_by(Document.document_id)
+            )
+            doc_result = await db.execute(doc_stmt)
+            documents = doc_result.scalars().all()
+            
+            return [
+                DocumentResponse(
+                    document_id=doc.document_id,
+                    document_url=doc.document_url
+                )
+                for doc in documents
+            ]
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while retrieving documents: {str(e)}"
+            )
+
 
 
