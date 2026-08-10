@@ -1127,3 +1127,95 @@ async def get_project_documents(
 #                 status_code=500,
 #                 detail=f"An error occurred while deleting the document: {str(e)}"
 #             )
+
+@app.post("/project/{project_id}/invite")
+async def invite_user_to_project(
+    project_id: int,
+    login: str,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Grant access to a project for a specific user.
+    Only the project owner can invite users.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            # Get the project
+            project_stmt = select(Project).where(Project.project_id == project_id)
+            project_result = await db.execute(project_stmt)
+            project = project_result.scalar_one_or_none()
+            
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found"
+                )
+            
+            # Check if current user is the owner
+            if project.user_id != current_user.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only the project owner can invite users"
+                )
+            
+            # Find the user to invite
+            user_stmt = select(User).where(User.username == login)
+            user_result = await db.execute(user_stmt)
+            invited_user = user_result.scalar_one_or_none()
+            
+            if not invited_user:
+                raise HTTPException(
+                    status_code=404,
+                    detail="User not found"
+                )
+            
+            # Check if user is the owner (can't invite themselves)
+            if invited_user.user_id == current_user.user_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="You cannot invite yourself to your own project"
+                )
+            
+            # Check if user already has access
+            existing_share_stmt = (
+                select(SharedProject)
+                .where(
+                    SharedProject.project_id == project_id,
+                    SharedProject.shared_with_user_id == invited_user.user_id
+                )
+            )
+            existing_share_result = await db.execute(existing_share_stmt)
+            existing_share = existing_share_result.scalar_one_or_none()
+            
+            if existing_share:
+                raise HTTPException(
+                    status_code=400,
+                    detail="User already has access to this project"
+                )
+            
+            # Grant access
+            shared_project = SharedProject(
+                project_id=project_id,
+                shared_with_user_id=invited_user.user_id
+            )
+            
+            db.add(shared_project)
+            await db.commit()
+            
+            return {
+                "message": f"User '{login}' has been granted access to project '{project.name}'",
+                "project_id": project_id,
+                "project_name": project.name,
+                "user_id": invited_user.user_id,
+                "username": invited_user.username
+            }
+            
+        except HTTPException:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while inviting user: {str(e)}"
+            )
