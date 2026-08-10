@@ -20,8 +20,8 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
-import boto3
-from botocore.exceptions import ClientError
+# import boto3
+# from botocore.exceptions import ClientError
 
 _ = load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
