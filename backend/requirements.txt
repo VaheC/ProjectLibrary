@@ -2,3 +2,7 @@ boto3
 fastapi
 uvicorn
 sqlalchemy
+python-dotenv
+bcrypt
+asyncpg
+PyJWT
