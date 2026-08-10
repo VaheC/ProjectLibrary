@@ -16,6 +16,8 @@ services:
     container_name: fast-api
     build:
       context: ./backend
+    env_file:
+      - ./backend/.env
     ports:
       - "8000:8000"
     volumes:
