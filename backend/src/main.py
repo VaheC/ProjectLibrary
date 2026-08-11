@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 import os
 import shutil
 import uuid
-import io
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     async_sessionmaker,
@@ -20,8 +19,9 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
-# import boto3
-# from botocore.exceptions import ClientError
+import aioboto3
+from botocore.exceptions import ClientError
+import io
 
 _ = load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -718,24 +718,38 @@ async def get_project_documents(
                 detail=f"An error occurred while retrieving documents: {str(e)}"
             )
 
-# class DocumentUploadResponse(BaseModel):
-#     message: str
-#     uploaded_count: int
-#     documents: List[DocumentResponse]
+class DocumentUploadResponse(BaseModel):
+    message: str
+    uploaded_count: int
+    documents: List[DocumentResponse]
 
-# # Add these environment variables
-# AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-# AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-# AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-# AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET")
+# Add these environment variables
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET")
+# AWS_SESSION_TOKEN = os.getenv("AWS_SESSION_TOKEN")
 
-# # Initialize S3 client
-# s3_client = boto3.client(
-#     's3',
-#     aws_access_key_id=AWS_ACCESS_KEY_ID,
-#     aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-#     region_name=AWS_REGION
-# )
+# Create async S3 client
+# async def get_s3_client():
+#     """Get async S3 client using aioboto3."""
+#     session = aioboto3.Session()
+#     return await session.client(
+#         's3',
+#         aws_access_key_id=AWS_ACCESS_KEY_ID,
+#         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+#         region_name=AWS_REGION
+#     )
+
+def get_s3_client():
+    session = aioboto3.Session()
+    return session.client(
+        's3',
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION,
+        # aws_session_token=AWS_SESSION_TOKEN
+    )
 
 # @app.post("/project/{project_id}/documents", response_model=DocumentUploadResponse)
 # async def upload_documents(
@@ -744,7 +758,7 @@ async def get_project_documents(
 #     current_user: TokenData = Depends(get_current_user)
 # ):
 #     """
-#     Upload one or more documents for a specific project to AWS S3.
+#     Upload one or more documents for a specific project to AWS S3 using aioboto3.
 #     Access is granted if user owns the project or the project is shared with them.
 #     """
 #     async with AsyncSessionLocal() as db:
@@ -760,7 +774,7 @@ async def get_project_documents(
 #                     detail="Project not found"
 #                 )
             
-#             # Check if user has access (owns the project or project is shared with them)
+#             # Check if user has access
 #             has_access = project.user_id == current_user.user_id
             
 #             if not has_access:
@@ -783,51 +797,54 @@ async def get_project_documents(
             
 #             uploaded_documents = []
             
-#             for file in files:
-#                 # Generate unique filename
-#                 file_extension = os.path.splitext(file.filename)[1]
-#                 unique_filename = f"projects/{project_id}/{uuid.uuid4()}{file_extension}"
-                
-#                 # Read file content
-#                 file_content = await file.read()
-                
-#                 try:
-#                     # Upload to S3
-#                     s3_client.put_object(
-#                         Bucket=AWS_S3_BUCKET,
-#                         Key=unique_filename,
-#                         Body=file_content,
-#                         ContentType=file.content_type or 'application/octet-stream'
-#                     )
+#             # Get async S3 client
+#             # async with await get_s3_client() as s3_client:
+#             async with get_s3_client() as s3_client:
+#                 for file in files:
+#                     # Generate unique filename
+#                     file_extension = os.path.splitext(file.filename)[1]
+#                     unique_filename = f"projects/{project_id}/{uuid.uuid4()}{file_extension}"
                     
-#                     # Generate S3 URL
-#                     document_url = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{unique_filename}"
+#                     # Read file content
+#                     file_content = await file.read()
                     
-#                     # Create document record in database
-#                     new_document = Document(
-#                         project_id=project_id,
-#                         document_url=document_url
-#                     )
-                    
-#                     db.add(new_document)
-#                     await db.flush()
-#                     await db.refresh(new_document)
-                    
-#                     uploaded_documents.append(
-#                         DocumentResponse(
-#                             document_id=new_document.document_id,
-#                             document_url=new_document.document_url
+#                     try:
+#                         # Upload to S3 asynchronously
+#                         await s3_client.put_object(
+#                             Bucket=AWS_S3_BUCKET,
+#                             Key=unique_filename,
+#                             Body=file_content,
+#                             ContentType=file.content_type or 'application/octet-stream'
 #                         )
-#                     )
-                    
-#                 except ClientError as e:
-#                     raise HTTPException(
-#                         status_code=500,
-#                         detail=f"Failed to upload file to S3: {str(e)}"
-#                     )
-#                 finally:
-#                     # Reset file position for potential reuse
-#                     await file.seek(0)
+                        
+#                         # Generate S3 URL
+#                         document_url = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{unique_filename}"
+                        
+#                         # Create document record in database
+#                         new_document = Document(
+#                             project_id=project_id,
+#                             document_url=document_url
+#                         )
+                        
+#                         db.add(new_document)
+#                         await db.flush()
+#                         await db.refresh(new_document)
+                        
+#                         uploaded_documents.append(
+#                             DocumentResponse(
+#                                 document_id=new_document.document_id,
+#                                 document_url=new_document.document_url
+#                             )
+#                         )
+                        
+#                     except ClientError as e:
+#                         raise HTTPException(
+#                             status_code=500,
+#                             detail=f"Failed to upload file '{file.filename}' to S3: {str(e)}"
+#                         )
+#                     finally:
+#                         # Reset file position for potential reuse
+#                         await file.seek(0)
             
 #             await db.commit()
             
@@ -846,6 +863,119 @@ async def get_project_documents(
 #                 status_code=500,
 #                 detail=f"An error occurred while uploading documents: {str(e)}"
 #             )
+
+@app.post("/project/{project_id}/documents", response_model=DocumentUploadResponse)
+async def upload_document(
+    project_id: int,
+    file: UploadFile = File(...),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Upload one or more documents for a specific project to AWS S3 using aioboto3.
+    Access is granted if user owns the project or the project is shared with them.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            # Check if project exists and user has access
+            project_stmt = select(Project).where(Project.project_id == project_id)
+            project_result = await db.execute(project_stmt)
+            project = project_result.scalar_one_or_none()
+            
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found"
+                )
+            
+            # Check if user has access
+            has_access = project.user_id == current_user.user_id
+            
+            if not has_access:
+                share_stmt = (
+                    select(SharedProject)
+                    .where(
+                        SharedProject.project_id == project_id,
+                        SharedProject.shared_with_user_id == current_user.user_id
+                    )
+                )
+                share_result = await db.execute(share_stmt)
+                shared_project = share_result.scalar_one_or_none()
+                has_access = shared_project is not None
+            
+            if not has_access:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You do not have access to this project"
+                )
+            
+            uploaded_documents = []
+            
+            # Get async S3 client
+            # async with await get_s3_client() as s3_client:
+            async with get_s3_client() as s3_client:
+
+                # Generate unique filename
+                file_extension = os.path.splitext(file.filename)[1]
+                unique_filename = f"projects/{project_id}/{uuid.uuid4()}{file_extension}"
+                
+                # Read file content
+                file_content = await file.read()
+                
+                try:
+                    # Upload to S3 asynchronously
+                    await s3_client.put_object(
+                        Bucket=AWS_S3_BUCKET,
+                        Key=unique_filename,
+                        Body=file_content,
+                        ContentType=file.content_type or 'application/octet-stream'
+                    )
+                    
+                    # Generate S3 URL
+                    document_url = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{unique_filename}"
+                    
+                    # Create document record in database
+                    new_document = Document(
+                        project_id=project_id,
+                        document_url=document_url
+                    )
+                    
+                    db.add(new_document)
+                    await db.flush()
+                    await db.refresh(new_document)
+                    
+                    uploaded_documents.append(
+                        DocumentResponse(
+                            document_id=new_document.document_id,
+                            document_url=new_document.document_url
+                        )
+                    )
+                    
+                except ClientError as e:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to upload file '{file.filename}' to S3: {str(e)}"
+                    )
+                finally:
+                    # Reset file position for potential reuse
+                    await file.seek(0)
+            
+            await db.commit()
+            
+            return DocumentUploadResponse(
+                message=f"Successfully uploaded {len(uploaded_documents)} document(s) to S3",
+                uploaded_count=len(uploaded_documents),
+                documents=uploaded_documents
+            )
+            
+        except HTTPException:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while uploading documents: {str(e)}"
+            )
 
 # @app.get("/document/{document_id}")
 # async def download_document(
