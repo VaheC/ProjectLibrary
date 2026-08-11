@@ -977,109 +977,120 @@ async def upload_document(
                 detail=f"An error occurred while uploading documents: {str(e)}"
             )
 
-# @app.get("/document/{document_id}")
-# async def download_document(
-#     document_id: int,
-#     current_user: TokenData = Depends(get_current_user)
-# ):
-#     """
-#     Download a specific document from S3.
-#     Access is granted if user has access to the project containing this document.
-#     """
-#     async with AsyncSessionLocal() as db:
-#         try:
-#             # Get the document with project info
-#             doc_stmt = (
-#                 select(Document)
-#                 .where(Document.document_id == document_id)
-#             )
-#             doc_result = await db.execute(doc_stmt)
-#             document = doc_result.scalar_one_or_none()
+# Initialize aioboto3 session (add this at the top of your file with other globals)
+# Note: You don't need to create a client here, we'll create it inside the function
+
+@app.get("/document/{document_id}")
+async def download_document(
+    document_id: int,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Download a specific document from S3.
+    Access is granted if user has access to the project containing this document.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            # Get the document with project info
+            doc_stmt = (
+                select(Document)
+                .where(Document.document_id == document_id)
+            )
+            doc_result = await db.execute(doc_stmt)
+            document = doc_result.scalar_one_or_none()
             
-#             if not document:
-#                 raise HTTPException(
-#                     status_code=404,
-#                     detail="Document not found"
-#                 )
+            if not document:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Document not found"
+                )
             
-#             # Get the associated project
-#             project_stmt = select(Project).where(Project.project_id == document.project_id)
-#             project_result = await db.execute(project_stmt)
-#             project = project_result.scalar_one_or_none()
+            # Get the associated project
+            project_stmt = select(Project).where(Project.project_id == document.project_id)
+            project_result = await db.execute(project_stmt)
+            project = project_result.scalar_one_or_none()
             
-#             if not project:
-#                 raise HTTPException(
-#                     status_code=404,
-#                     detail="Associated project not found"
-#                 )
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Associated project not found"
+                )
             
-#             # Check if user has access (owns the project or project is shared with them)
-#             has_access = project.user_id == current_user.user_id
+            # Check if user has access (owns the project or project is shared with them)
+            has_access = project.user_id == current_user.user_id
             
-#             if not has_access:
-#                 share_stmt = (
-#                     select(SharedProject)
-#                     .where(
-#                         SharedProject.project_id == document.project_id,
-#                         SharedProject.shared_with_user_id == current_user.user_id
-#                     )
-#                 )
-#                 share_result = await db.execute(share_stmt)
-#                 shared_project = share_result.scalar_one_or_none()
-#                 has_access = shared_project is not None
+            if not has_access:
+                share_stmt = (
+                    select(SharedProject)
+                    .where(
+                        SharedProject.project_id == document.project_id,
+                        SharedProject.shared_with_user_id == current_user.user_id
+                    )
+                )
+                share_result = await db.execute(share_stmt)
+                shared_project = share_result.scalar_one_or_none()
+                has_access = shared_project is not None
             
-#             if not has_access:
-#                 raise HTTPException(
-#                     status_code=403,
-#                     detail="You do not have access to this document"
-#                 )
+            if not has_access:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You do not have access to this document"
+                )
             
-#             # Extract S3 key from URL
-#             # URL format: https://bucket.s3.region.amazonaws.com/projects/{project_id}/{filename}
-#             s3_key = document.document_url.split(f"{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/")[-1]
+            # Extract S3 key from URL
+            # URL format: https://bucket.s3.region.amazonaws.com/projects/{project_id}/{filename}
+            s3_key = document.document_url.split(f"{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/")[-1]
             
-#             try:
-#                 # Get file from S3
-#                 response = s3_client.get_object(
-#                     Bucket=AWS_S3_BUCKET,
-#                     Key=s3_key
-#                 )
+            try:
+                # Create async S3 session and client
+                session = aioboto3.Session()
+                async with session.client(
+                    's3',
+                    aws_access_key_id=AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                    region_name=AWS_REGION
+                ) as s3_client:
+                    # Get file from S3 asynchronously
+                    response = await s3_client.get_object(
+                        Bucket=AWS_S3_BUCKET,
+                        Key=s3_key
+                    )
+                    
+                    # Read file content asynchronously
+                    file_content = await response['Body'].read()
+                    content_type = response.get('ContentType', 'application/octet-stream')
+                    
+                    # Extract filename from S3 key
+                    filename = s3_key.split('/')[-1]
+                    
+                    # Return file as streaming response
+                    return StreamingResponse(
+                        io.BytesIO(file_content),
+                        media_type=content_type,
+                        headers={
+                            "Content-Disposition": f"attachment; filename={filename}"
+                        }
+                    )
                 
-#                 # Get file content and determine content type
-#                 file_content = response['Body'].read()
-#                 content_type = response.get('ContentType', 'application/octet-stream')
-                
-#                 # Extract filename from S3 key
-#                 filename = s3_key.split('/')[-1]
-                
-#                 # Return file as streaming response
-#                 return StreamingResponse(
-#                     io.BytesIO(file_content),
-#                     media_type=content_type,
-#                     headers={
-#                         "Content-Disposition": f"attachment; filename={filename}"
-#                     }
-#                 )
-                
-#             except ClientError as e:
-#                 if e.response['Error']['Code'] == 'NoSuchKey':
-#                     raise HTTPException(
-#                         status_code=404,
-#                         detail="File not found in S3 storage"
-#                     )
-#                 else:
-#                     raise HTTPException(
-#                         status_code=500,
-#                         detail=f"Error retrieving file from S3: {str(e)}"
-#                     )
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'NoSuchKey':
+                    raise HTTPException(
+                        status_code=404,
+                        detail="File not found in S3 storage"
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Error retrieving file from S3: {str(e)}"
+                    )
             
-#         except HTTPException:
-#             raise
-#         except Exception as e:
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail=f"An error occurred while downloading the document: {str(e)}"
-#             )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while downloading the document: {str(e)}"
+            )
 
 # @app.put("/document/{document_id}", response_model=DocumentResponse)
 # async def update_document(
