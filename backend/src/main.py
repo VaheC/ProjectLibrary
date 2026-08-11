@@ -1315,7 +1315,88 @@ async def update_document(
                 detail=f"An error occurred while updating the document: {str(e)}"
             )
 
-
+@app.delete("/document/{document_id}")
+async def delete_document(
+    document_id: int,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Delete a specific document from both S3 and the database.
+    Only the project owner can delete documents.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            # Get the document with project info
+            doc_stmt = (
+                select(Document)
+                .where(Document.document_id == document_id)
+            )
+            doc_result = await db.execute(doc_stmt)
+            document = doc_result.scalar_one_or_none()
+            
+            if not document:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Document not found"
+                )
+            
+            # Get the associated project
+            project_stmt = select(Project).where(Project.project_id == document.project_id)
+            project_result = await db.execute(project_stmt)
+            project = project_result.scalar_one_or_none()
+            
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Associated project not found"
+                )
+            
+            # Check if user is the owner (only owner can delete documents)
+            if project.user_id != current_user.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only the project owner can delete documents"
+                )
+            
+            # Extract S3 key from URL
+            s3_key = document.document_url.split(f"{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/")[-1]
+            
+            try:
+                # Create async S3 session and client
+                session = aioboto3.Session()
+                async with session.client(
+                    's3',
+                    aws_access_key_id=AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                    region_name=AWS_REGION
+                ) as s3_client:
+                    # Delete file from S3 asynchronously
+                    await s3_client.delete_object(
+                        Bucket=AWS_S3_BUCKET,
+                        Key=s3_key
+                    )
+            except ClientError as e:
+                # Log error but continue with database deletion
+                print(f"Warning: Failed to delete file from S3: {str(e)}")
+            
+            # Delete document from database
+            await db.delete(document)
+            await db.commit()
+            
+            return {
+                "message": f"Document {document_id} deleted successfully",
+                "document_id": document_id
+            }
+            
+        except HTTPException:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while deleting the document: {str(e)}"
+            )
 
 @app.post("/project/{project_id}/invite")
 async def invite_user_to_project(
