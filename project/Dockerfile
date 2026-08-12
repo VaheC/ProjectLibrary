@@ -16,5 +16,7 @@ COPY ./dependencies ./dependencies
 COPY ./models ./models
 COPY ./routers ./routers
 COPY ./main.py ./main.py
+COPY ./tests ./tests
+COPY ./pytest.ini ./pytest.ini
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
