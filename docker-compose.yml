@@ -14,6 +14,8 @@ services:
       - ./project/dependencies:/code/dependencies
       - ./project/models:/code/models
       - ./project/routers:/code/routers
+      - ./project/tests:/code/tests
+      - ./project/pytest.ini:/code/pytest.ini
     depends_on:
       - postgres_db
 
