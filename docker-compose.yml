@@ -1,27 +1,19 @@
 services:
-  frontend:
-    image: app-test
-    container_name: streamlit-app
-    build: 
-      context: ./frontend
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./frontend/src:/code/src
-    depends_on:
-      - api
-
   api:
     image: api-test
     container_name: fast-api
     build:
-      context: ./backend
+      context: ./project
     env_file:
-      - ./backend/.env
+      - ./project/.env
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/src:/code/src
+      - ./project/config:/code/config
+      - ./project/db:/code/db
+      - ./project/dependencies:/code/dependencies
+      - ./project/models:/code/models
+      - ./project/routers:/code/routers
     depends_on:
       - postgres_db
 
@@ -30,7 +22,7 @@ services:
     container_name: postgres-container
     environment:
       POSTGRES_USER: project_library
-      POSTGRES_PASSWORD: project88library**
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGE_ME}
       POSTGRES_DB: project_library_db
     ports:
       - "5432:5432"
