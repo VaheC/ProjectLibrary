@@ -2,7 +2,7 @@ import os
 
 # Set test environment variables before importing the app.
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite://"
-os.environ["SECRET_KEY"] = "test-secret-key"
+os.environ["SECRET_KEY"] = "test-secret-key-that-is-at-least-32-bytes-long"
 os.environ["ALGORITHM"] = "HS256"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
 
