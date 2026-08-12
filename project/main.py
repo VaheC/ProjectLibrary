@@ -19,8 +19,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    lifespan=lifespan,
-    openapi_version="3.0.3"
+    lifespan=lifespan
 )
 
 app.include_router(auth.router)
