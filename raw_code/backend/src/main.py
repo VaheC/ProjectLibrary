@@ -1202,9 +1202,6 @@ async def download_document(
 #                 detail=f"An error occurred while updating the document: {str(e)}"
 #             )
 
-import aioboto3
-from botocore.exceptions import ClientError
-
 @app.put("/document/{document_id}", response_model=DocumentResponse)
 async def update_document(
     document_id: int,
