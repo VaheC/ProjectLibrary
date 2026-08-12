@@ -563,10 +563,11 @@ async def get_project_documents(
 )
 async def upload_project_documents(
     project_id: int,
-    files: Annotated[
-        List[UploadFile],
-        File(description="One or more files to upload"),
-    ],
+    # files: Annotated[
+    #     List[UploadFile],
+    #     File(description="One or more files to upload"),
+    # ],
+    files: List[UploadFile] = File(...),
     current_user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
