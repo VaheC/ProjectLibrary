@@ -49,8 +49,8 @@ async def download_document(
         - participant: allowed.
     """
 
-    stmt = select(Document).where(Document.document_id == document_id)
-    result = await db.execute(stmt)
+    document_query = select(Document).where(Document.document_id == document_id)
+    result = await db.execute(document_query)
     document = result.scalar_one_or_none()
 
     if not document:
@@ -124,8 +124,8 @@ async def update_document(
     Participants can modify documents, but cannot delete them.
     """
 
-    stmt = select(Document).where(Document.document_id == document_id)
-    result = await db.execute(stmt)
+    document_query = select(Document).where(Document.document_id == document_id)
+    result = await db.execute(document_query)
     document = result.scalar_one_or_none()
 
     if not document:
@@ -209,8 +209,8 @@ async def delete_document(
         - participant: denied.
     """
 
-    stmt = select(Document).where(Document.document_id == document_id)
-    result = await db.execute(stmt)
+    document_query = select(Document).where(Document.document_id == document_id)
+    result = await db.execute(document_query)
     document = result.scalar_one_or_none()
 
     if not document:
