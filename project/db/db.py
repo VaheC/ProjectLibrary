@@ -33,7 +33,6 @@ class User(Base):
         nullable=False,
     )
 
-    # Store password hashes, not plaintext passwords.
     password_hash: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
