@@ -713,8 +713,8 @@ async def invite_user_to_project(
             detail="Username must not be empty",
         )
 
-    user_stmt = select(User).where(User.username == username)
-    user_result = await db.execute(user_stmt)
+    user_query = select(User).where(User.username == username)
+    user_result = await db.execute(user_query)
     invited_user = user_result.scalar_one_or_none()
 
     if not invited_user:
