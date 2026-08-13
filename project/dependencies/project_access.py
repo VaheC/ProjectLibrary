@@ -28,12 +28,12 @@ async def get_accessible_project(
           [selectinload(Project.documents), selectinload(Project.user)]
     """
 
-    stmt = select(Project).where(Project.project_id == project_id)
+    project_query = select(Project).where(Project.project_id == project_id)
 
     if options:
-        stmt = stmt.options(*options)
+        project_query = project_query.options(*options)
 
-    result = await db.execute(stmt)
+    result = await db.execute(project_query)
     project = result.scalar_one_or_none()
 
     if not project:
