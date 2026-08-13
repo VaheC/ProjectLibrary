@@ -65,8 +65,8 @@ async def get_current_user(
     token = credentials.credentials
     token_data = verify_token(token)
 
-    stmt = select(User).where(User.user_id == token_data.user_id)
-    result = await db.execute(stmt)
+    user_query = select(User).where(User.user_id == token_data.user_id)
+    result = await db.execute(user_query)
     user = result.scalar_one_or_none()
 
     if not user:
