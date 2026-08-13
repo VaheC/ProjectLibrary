@@ -729,12 +729,12 @@ async def invite_user_to_project(
             detail="You cannot invite yourself to your own project",
         )
 
-    existing_share_stmt = select(SharedProject).where(
+    existing_share_query = select(SharedProject).where(
         SharedProject.project_id == project_id,
         SharedProject.shared_with_user_id == invited_user.user_id,
     )
 
-    existing_share_result = await db.execute(existing_share_stmt)
+    existing_share_result = await db.execute(existing_share_query)
     existing_share = existing_share_result.scalar_one_or_none()
 
     if existing_share:
