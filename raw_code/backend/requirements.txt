@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-sqlalchemy
-python-dotenv
-bcrypt
-asyncpg
-PyJWT
-aioboto3
-python-multipart
