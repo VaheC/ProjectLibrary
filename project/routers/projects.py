@@ -286,12 +286,12 @@ async def update_project_info(
     )
 
     # Check whether another project already has this name.
-    name_check_stmt = select(Project).where(
+    name_check_query = select(Project).where(
         Project.name.ilike(name),
         Project.project_id != project_id,
     )
 
-    name_check_result = await db.execute(name_check_stmt)
+    name_check_result = await db.execute(name_check_query)
     existing_project = name_check_result.scalar_one_or_none()
 
     if existing_project:
