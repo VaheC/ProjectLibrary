@@ -354,11 +354,11 @@ async def delete_project(
     )
 
     # Get all documents belonging to this project so we can delete S3 files.
-    documents_stmt = select(Document).where(
+    documents_query = select(Document).where(
         Document.project_id == project_id
     )
 
-    documents_result = await db.execute(documents_stmt)
+    documents_result = await db.execute(documents_query)
     documents = documents_result.scalars().all()
 
     if documents:
