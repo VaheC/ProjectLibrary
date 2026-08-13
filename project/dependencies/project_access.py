@@ -54,12 +54,12 @@ async def get_accessible_project(
         )
 
     # Check whether the project is shared with the current user.
-    share_stmt = select(SharedProject).where(
+    shared_project_query = select(SharedProject).where(
         SharedProject.project_id == project_id,
         SharedProject.shared_with_user_id == current_user.user_id,
     )
 
-    share_result = await db.execute(share_stmt)
+    share_result = await db.execute(shared_project_query)
     shared_project = share_result.scalar_one_or_none()
 
     if not shared_project:
