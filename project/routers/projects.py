@@ -77,8 +77,8 @@ async def create_project(
         )
 
     # Check whether a project with the same name already exists.
-    stmt = select(Project).where(Project.name.ilike(name))
-    result = await db.execute(stmt)
+    project_query = select(Project).where(Project.name.ilike(name))
+    result = await db.execute(project_query)
     existing_project = result.scalar_one_or_none()
 
     if existing_project:
@@ -133,7 +133,7 @@ async def get_user_projects(
     Each project includes documents and owner information.
     """
 
-    stmt = (
+    projects_query = (
         select(Project)
         .options(
             selectinload(Project.documents),
@@ -154,7 +154,7 @@ async def get_user_projects(
         .order_by(Project.created_at.desc())
     )
 
-    result = await db.execute(stmt)
+    result = await db.execute(projects_query)
     projects = result.scalars().all()
 
     projects_response = []
