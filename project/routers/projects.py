@@ -418,13 +418,13 @@ async def get_project_documents(
         require_owner=False,
     )
 
-    stmt = (
+    project_by_docid_query = (
         select(Document)
         .where(Document.project_id == project_id)
         .order_by(Document.document_id)
     )
 
-    result = await db.execute(stmt)
+    result = await db.execute(project_by_docid_query)
     documents = result.scalars().all()
 
     return [
