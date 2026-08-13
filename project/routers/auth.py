@@ -53,8 +53,8 @@ async def create_user(
             detail="Password must be at least 8 characters long",
         )
 
-    stmt = select(User).where(User.username == login)
-    result = await db.execute(stmt)
+    user_query = select(User).where(User.username == login)
+    result = await db.execute(user_query)
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
@@ -107,8 +107,8 @@ async def login_user(
             detail="Login and password must be provided",
         )
 
-    stmt = select(User).where(User.username == login)
-    result = await db.execute(stmt)
+    user_query = select(User).where(User.username == login)
+    result = await db.execute(user_query)
     user = result.scalar_one_or_none()
 
     if not user:
