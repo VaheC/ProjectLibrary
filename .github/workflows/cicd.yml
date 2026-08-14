@@ -32,4 +32,5 @@ jobs:
 
       # Step 4: Run tests with asyncio auto mode enabled
       - name: Run tests
+        working-directory: ./project
         run: pytest --asyncio-mode=auto
