@@ -111,3 +111,29 @@ def test_post_auth_user_already_exists(
     mock_db_execute_present.execute.assert_awaited_once()
     mock_db_execute_present.add.assert_not_called()
 
+def test_post_auth_integrity_failure(
+    client_with_mock_db_execute_none,
+    mock_db_execute_none
+):
+    auth_data = {
+        "login": "testuser1",
+        "password": "testpassword1",
+        "repeat_password": "testpassword1",
+    }
+
+    mock_db_execute_none.flush.side_effect = IntegrityError(
+        statement="INSERT INTO users ...",
+        params={},
+        orig=Exception("duplicate key value violates unique constraint"),
+    )
+
+    response = client_with_mock_db_execute_none.post(
+        "/auth",
+        json=auth_data,
+    )
+
+    assert response.status_code == 400
+    assert "Username already exists" in response.json()["detail"]
+
+    mock_db_execute_none.flush.assert_awaited_once()
+    mock_db_execute_none.add.assert_called_once()
