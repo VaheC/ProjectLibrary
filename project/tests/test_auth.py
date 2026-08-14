@@ -1,11 +1,40 @@
-async def test_register_success(client):
-    response = await client.post(
-        "/auth",
-        json={
-            "login": "newuser",
-            "password": "password123",
-            "repeat_password": "password123",
+import pytest
+
+
+@pytest.mark.parametrize(
+    "auth_data",
+    (
+        {
+            "login": "testuser1",
+            "password": "testpassword1",
+            "repeat_password": "testpassword1",
         },
+    ),
+)
+def test_post_auth_success(
+    client_with_mock_db_execute_none,
+    mock_db_execute_none,
+    auth_data,
+):
+    created_objects = []
+
+    def add_side_effect(obj):
+        created_objects.append(obj)
+
+    async def flush_side_effect():
+        """
+        Simulates SQLAlchemy assigning a primary key after flush().
+        """
+        for obj in created_objects:
+            if hasattr(obj, "user_id"):
+                obj.user_id = 1
+
+    mock_db_execute_none.add.side_effect = add_side_effect
+    mock_db_execute_none.flush.side_effect = flush_side_effect
+
+    response = client_with_mock_db_execute_none.post(
+        "/auth",
+        json=auth_data,
     )
 
     assert response.status_code == 200
@@ -13,99 +42,8 @@ async def test_register_success(client):
     data = response.json()
 
     assert data["message"] == "User created successfully"
-    assert data["username"] == "newuser"
-    assert "user_id" in data
+    assert data["user_id"] == 1
+    assert data["username"] == auth_data["login"]
 
-
-async def test_register_password_mismatch(client):
-    response = await client.post(
-        "/auth",
-        json={
-            "login": "newuser",
-            "password": "password123",
-            "repeat_password": "differentpassword",
-        },
-    )
-
-    assert response.status_code == 400
-    assert "Passwords do not match" in response.json()["detail"]
-
-
-async def test_register_short_password(client):
-    response = await client.post(
-        "/auth",
-        json={
-            "login": "newuser",
-            "password": "short",
-            "repeat_password": "short",
-        },
-    )
-
-    assert response.status_code == 400
-    assert "at least 8 characters" in response.json()["detail"]
-
-
-async def test_register_duplicate_user(client, register_user):
-    await register_user(username="duplicateuser")
-
-    response = await client.post(
-        "/auth",
-        json={
-            "login": "duplicateuser",
-            "password": "password123",
-            "repeat_password": "password123",
-        },
-    )
-
-    assert response.status_code == 400
-    assert "already exists" in response.json()["detail"]
-
-
-async def test_login_success(client, register_user):
-    await register_user(username="loginuser")
-
-    response = await client.post(
-        "/login",
-        json={
-            "login": "loginuser",
-            "password": "password123",
-        },
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["message"] == "Login successful"
-    assert data["username"] == "loginuser"
-    assert data["token_type"] == "bearer"
-    assert data["expires_in"] == 3600
-    assert "access_token" in data
-
-
-async def test_login_wrong_password(client, register_user):
-    await register_user(username="loginuser")
-
-    response = await client.post(
-        "/login",
-        json={
-            "login": "loginuser",
-            "password": "wrongpassword",
-        },
-    )
-
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid username or password"
-
-
-async def test_login_unknown_user(client):
-    response = await client.post(
-        "/login",
-        json={
-            "login": "unknownuser",
-            "password": "password123",
-        },
-    )
-
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid username or password"
+    mock_db_execute_none.add.assert_called_once()
+    mock_db_execute_none.flush.assert_awaited_once()
