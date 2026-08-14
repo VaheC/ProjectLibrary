@@ -148,7 +148,7 @@ def test_post_auth_integrity_failure(
             'login': 'existinguser',
             'password': 'testpassword1'
         }
-    )
+    ),
 )
 def test_post_login_success(
     client_with_mock_db_execute_present,
