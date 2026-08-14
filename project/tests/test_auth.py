@@ -1,5 +1,5 @@
 import pytest
-
+from sqlalchemy.exc import IntegrityError
 
 @pytest.mark.parametrize(
     "auth_data",
@@ -44,3 +44,15 @@ def test_post_auth_success(
 
     mock_db_execute_none.add.assert_called_once()
     mock_db_execute_none.flush.assert_awaited_once()
+
+@pytest.mark.parametrize(
+    'auth_data',
+    [
+        {"password": "testpassword1", "repeat_password": "testpassword1"}, 
+        {"login": "testuser1", "password": "testpassword1"}
+    ]
+)
+def test_post_auth_missing_required_fields(client, auth_data):
+    response = client.post("/auth", json=auth_data)
+    assert response.status_code == 422
+
