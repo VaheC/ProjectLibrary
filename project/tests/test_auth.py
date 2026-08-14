@@ -93,3 +93,21 @@ def test_post_auth_invalid_data_logic(
     response = client_with_mock_db_execute_none.post("/auth", json=auth_data)
     assert response.status_code == 400
 
+def test_post_auth_user_already_exists(
+    client_with_mock_db_execute_present,
+    mock_db_execute_present
+):
+    auth_data = {
+        "login": "existinguser",
+        "password": "testpassword1",
+        "repeat_password": "testpassword1"
+    }
+    
+    response = client_with_mock_db_execute_present.post("/auth", json=auth_data)
+    
+    assert response.status_code == 400
+    assert "Username already exists" in response.json()["detail"]
+
+    mock_db_execute_present.execute.assert_awaited_once()
+    mock_db_execute_present.add.assert_not_called()
+
