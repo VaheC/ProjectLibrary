@@ -100,8 +100,9 @@ async def login_user(
     """
 
     login = login_data.login.strip()
+    password = login_data.password.strip()
 
-    if not login or not login_data.password:
+    if not login or not password:
         raise HTTPException(
             status_code=400,
             detail="Login and password must be provided",
