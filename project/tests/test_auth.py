@@ -22,9 +22,6 @@ def test_post_auth_success(
         created_objects.append(obj)
 
     async def flush_side_effect():
-        """
-        Simulates SQLAlchemy assigning a primary key after flush().
-        """
         for obj in created_objects:
             if hasattr(obj, "user_id"):
                 obj.user_id = 1
