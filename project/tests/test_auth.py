@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+############# post-auth router #############
 @pytest.mark.parametrize(
     "auth_data",
     (
@@ -137,3 +138,37 @@ def test_post_auth_integrity_failure(
 
     mock_db_execute_none.flush.assert_awaited_once()
     mock_db_execute_none.add.assert_called_once()
+
+############# post-login router #############
+
+@pytest.mark.parametrize(
+    'login_data',
+    (
+        {
+            'login': 'existinguser',
+            'password': 'testpassword1'
+        }
+    )
+)
+def test_post_login_success(
+    client_with_mock_db_execute_present,
+    mock_db_execute_present,
+    login_data,
+):
+    response = client_with_mock_db_execute_present.post(
+        "/login",
+        json=login_data,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["message"] == "Login successful"
+    assert data["user_id"] == 1
+    assert data["username"] == login_data["login"]
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["expires_in"] == 3600
+    
+    mock_db_execute_present.execute.assert_awaited_once()
