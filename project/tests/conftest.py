@@ -46,7 +46,6 @@ def mock_db_execute_none():
 
     return db
 
-
 @pytest.fixture()
 def client_with_mock_db_execute_none(client, mock_db_execute_none):
     """
@@ -60,4 +59,40 @@ def client_with_mock_db_execute_none(client, mock_db_execute_none):
 
     yield client
 
+    app.dependency_overrides.clear()
+
+@pytest.fixture()
+def mock_db_execute_present():
+    """
+    Mocked async database session.
+    Simulates the case where the username ALREADY EXISTS in the database.
+    """
+    db = MagicMock()
+
+    user = MagicMock()
+    user.user_id = 1
+    user.username = 'existinguser'
+    user.password_hash = 'some_hashed_password'
+
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = user
+
+    db.execute = AsyncMock(return_value=result)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+
+    return db
+
+@pytest.fixture()
+def client_with_mock_db_execute_present(client, mock_db_execute_present):
+    """
+    Overrides the real get_db dependency with the 'user exists' mock.
+    """
+    async def override_get_db():
+        yield mock_db_execute_present
+
+    app.dependency_overrides[get_db] = override_get_db
+    yield client
     app.dependency_overrides.clear()
