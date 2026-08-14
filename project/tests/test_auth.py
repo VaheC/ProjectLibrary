@@ -203,3 +203,18 @@ def test_post_login_invalid_data_logic(
     
     assert response.status_code == 400
     assert "Login and password must be provided" in response.json()["detail"]
+
+@pytest.mark.parametrize(
+    'login_data',
+    [
+        {"login": "nonexistent_user", "password": "testpassword1"}
+    ]
+)
+def test_post_login_not_existing_login(
+    client_with_mock_db_execute_none,
+    login_data
+):
+    response = client_with_mock_db_execute_none.post("/login", json=login_data)
+    
+    assert response.status_code == 401
+    assert "Invalid username or password" in response.json()["detail"]
