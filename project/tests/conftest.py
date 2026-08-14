@@ -1,3 +1,15 @@
+import os
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite://"
+os.environ["SECRET_KEY"] = "test-secret-key-that-is-at-least-32-bytes-long"
+os.environ["ALGORITHM"] = "HS256"
+os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
+
+os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-key"
+os.environ["AWS_REGION"] = "us-east-1"
+os.environ["AWS_S3_BUCKET"] = "test-bucket"
+
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock
 
