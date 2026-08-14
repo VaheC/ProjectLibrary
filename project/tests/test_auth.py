@@ -172,3 +172,14 @@ def test_post_login_success(
     assert data["expires_in"] == 3600
     
     mock_db_execute_present.execute.assert_awaited_once()
+
+@pytest.mark.parametrize(
+    'login_data',
+    [
+        {"login": "testpassword1"}, 
+        {"password": "testpassword1"}
+    ]
+)
+def test_post_login_missing_required_fields(client, login_data):
+    response = client.post("/login", json=login_data)
+    assert response.status_code == 422
