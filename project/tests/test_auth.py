@@ -183,3 +183,23 @@ def test_post_login_success(
 def test_post_login_missing_required_fields(client, login_data):
     response = client.post("/login", json=login_data)
     assert response.status_code == 422
+
+@pytest.mark.parametrize(
+    'login_data',
+    [
+        {"login": "", "password": "testpassword1"},
+        {"login": " ", "password": "testpassword1"},
+        {"login": "     ", "password": "testpassword1"},
+        {"login": "user", "password": ""},
+        {"login": "user", "password": "  "},
+        {"login": "user", "password": "        "}
+    ]
+)
+def test_post_login_invalid_data_logic(
+    client,
+    login_data
+):
+    response = client.post("/login", json=login_data)
+    
+    assert response.status_code == 400
+    assert "Login and password must be provided" in response.json()["detail"]
