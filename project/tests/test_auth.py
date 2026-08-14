@@ -56,3 +56,40 @@ def test_post_auth_missing_required_fields(client, auth_data):
     response = client.post("/auth", json=auth_data)
     assert response.status_code == 422
 
+@pytest.mark.parametrize(
+    'auth_data',
+    [
+        {
+            "login": "testuser1", 
+            "password": "testpassword1", 
+            "repeat_password": "differentpassword"
+        },
+        {
+            "login": "testuser1", 
+            "password": "short", 
+            "repeat_password": "short"
+        },
+        {
+            "login": "",
+            "password": "testpassword1",
+            "repeat_password": "testpassword1",
+        },
+        {
+            "login": " ",
+            "password": "testpassword1",
+            "repeat_password": "testpassword1",
+        },
+        {
+            "login": "     ",
+            "password": "testpassword1",
+            "repeat_password": "testpassword1",
+        }
+    ]
+)
+def test_post_auth_invalid_data_logic(
+    client_with_mock_db_execute_none,
+    auth_data
+):
+    response = client_with_mock_db_execute_none.post("/auth", json=auth_data)
+    assert response.status_code == 400
+
