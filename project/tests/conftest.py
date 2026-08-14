@@ -18,6 +18,8 @@ import pytest
 from main import app
 from db.db_session import get_db
 
+import bcrypt
+
 
 @pytest.fixture()
 def client():
@@ -69,10 +71,16 @@ def mock_db_execute_present():
     """
     db = MagicMock()
 
+    real_password = "testpassword1"
+    real_hash = bcrypt.hashpw(
+        real_password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
+
     user = MagicMock()
     user.user_id = 1
     user.username = 'existinguser'
-    user.password_hash = 'some_hashed_password'
+    user.password_hash = real_hash
 
     result = MagicMock()
     result.scalar_one_or_none.return_value = user
