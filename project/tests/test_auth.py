@@ -218,3 +218,18 @@ def test_post_login_not_existing_login(
     
     assert response.status_code == 401
     assert "Invalid username or password" in response.json()["detail"]
+
+@pytest.mark.parametrize(
+    'login_data',
+    [
+        {"login": "existinguser", "password": "jafljjfdkj778"}
+    ]
+)
+def test_post_login_wrong_password( # <--- Renamed for clarity
+    client_with_mock_db_execute_present,
+    login_data
+):
+    response = client_with_mock_db_execute_present.post("/login", json=login_data)
+    
+    assert response.status_code == 401
+    assert "Invalid username or password" in response.json()["detail"]
