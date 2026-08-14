@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from main import app
+from ..main import app
 from db.db_session import get_db
 
 
