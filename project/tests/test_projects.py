@@ -770,3 +770,19 @@ def test_upload_documents_s3_error_triggers_cleanup(
     mock_s3.delete_object.assert_awaited_once()
     
     app.dependency_overrides.clear()
+
+#################### post-/project/{project_id}/invite ####################
+
+def test_invite_user_success(
+    client_with_invite_success_db,
+    mock_db_execute_invite_success,
+):
+    response = client_with_invite_success_db.post(
+        "/project/1/invite",
+        params={"user": "inviteduser"}
+    )
+
+    assert response.status_code == 200
+    
+    mock_db_execute_invite_success.add.assert_called_once()
+    mock_db_execute_invite_success.commit.assert_awaited_once()
