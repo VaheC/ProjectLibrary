@@ -42,6 +42,8 @@ def mock_db_execute_none():
 
     result = MagicMock()
     result.scalar_one_or_none.return_value = None
+    result.scalars.return_value.all.return_value = []
+
 
     db.execute = AsyncMock(return_value=result)
     db.add = MagicMock()
