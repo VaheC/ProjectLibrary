@@ -377,3 +377,15 @@ def test_delete_project_success_without_documents(
     
     mock_s3.delete_object.assert_not_awaited()
 
+def test_delete_project_forbidden(
+    client_with_forbidden_project,
+):
+    """
+    A participant tries to delete the project.
+    get_accessible_project(require_owner=True) raises 403.
+    """
+    response = client_with_forbidden_project.delete("/project/1")
+
+    assert response.status_code == 403
+    assert "do not have access" in response.json()["detail"]
+
