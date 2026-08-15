@@ -1,5 +1,7 @@
 import pytest
 
+
+#################### post-project ####################
 @pytest.mark.parametrize(
     'project_data',
     [
@@ -128,3 +130,19 @@ def test_post_project_existing_project(
         "A project with this name already exists"
         in response.json()["detail"]
     )
+
+#################### post-projects ####################
+
+def test_get_projects_success(
+    client_with_all_projects_db_and_auth,
+):
+    response = client_with_all_projects_db_and_auth.get(
+        "/projects"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "message" in data
+    assert data["count"] == 3
+    assert len(data["projects"]) == 3
