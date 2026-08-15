@@ -676,3 +676,13 @@ def test_upload_documents_not_found(
 
     assert response.status_code == 404
     assert "Project not found" in response.json()["detail"]
+
+def test_upload_documents_missing_files_field(
+    client_with_accessible_project_and_mock_db,
+):
+    response = client_with_accessible_project_and_mock_db.post(
+        "/project/1/documents",
+        data={} 
+    )
+
+    assert response.status_code == 422
