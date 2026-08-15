@@ -251,3 +251,27 @@ def client_with_all_projects_db_and_auth(
     yield client
 
     app.dependency_overrides.clear()
+
+@pytest.fixture()
+def client_with_empty_projects_db_and_auth(
+    client,
+    mock_db_execute_none,
+    mock_current_user,
+):
+    """
+    Overrides DB to return no projects and authenticates the user.
+    Used for testing GET /projects when user has no projects.
+    """
+
+    async def override_get_db():
+        yield mock_db_execute_none
+
+    async def override_get_current_user():
+        return mock_current_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    yield client
+
+    app.dependency_overrides.clear()
