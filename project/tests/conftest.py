@@ -480,6 +480,6 @@ class FakeS3Context:
     async def __aexit__(self, *args):
         pass
 
-@pytest.fixture():
+@pytest.fixture()
 def get_fake_s3_context_class():
     return FakeS3Context
