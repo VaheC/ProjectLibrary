@@ -72,3 +72,37 @@ def test_post_project_short_name(
 
     assert response.status_code == 400
     assert "Project name must be at least 3 characters long" in response.json()["detail"]
+
+@pytest.mark.parametrize(
+    'project_data',
+    [
+        {
+            'name': 'project1',
+            'description': 'The pro.'
+        },
+        {
+            'name': 'project1',
+            'description': ''
+        },
+        {
+            'name': 'project1',
+            'description': '                        '
+        }
+    ]
+)
+def test_post_project_short_description(
+    client_with_project_db_and_auth_with_unique_project,
+    project_data
+):
+    response = client_with_project_db_and_auth_with_unique_project.post(
+        "/project",
+        json=project_data,
+    )
+
+    assert response.status_code == 400
+    assert (
+        "Project description must be at least 10 characters long" 
+        in response.json()["detail"]
+    )
+
+
