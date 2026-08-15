@@ -270,3 +270,17 @@ def test_put_project_info_not_found(
     )
     assert response.status_code == 404
     assert "Project not found" in response.json()["detail"]
+
+def test_put_project_info_forbidden(
+    client_with_forbidden_project
+):
+    valid_payload = {
+        "name": "Valid Name",
+        "description": "This is a valid description."
+    }
+    response = client_with_forbidden_project.put(
+        "/project/1/info",
+        json=valid_payload
+    )
+    assert response.status_code == 403
+    assert "do not have access" in response.json()["detail"]
