@@ -345,7 +345,10 @@ def client_with_inaccessible_project(
     with patch(
         'routers.projects.get_accessible_project',
         new_callable=AsyncMock,
-        return_value=None,
+        side_effect=HTTPException(
+            status_code=404, 
+            detail="Project not found"
+        ),
     ):
         yield client
 
