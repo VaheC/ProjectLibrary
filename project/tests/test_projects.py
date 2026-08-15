@@ -552,3 +552,56 @@ def test_get_project_documents_forbidden(
 
     assert response.status_code == 403
     assert "do not have access" in response.json()["detail"]
+
+#################### post-/project/{project_id}/documents ####################
+
+def setup_document_flush(mock_db):
+    """Helper to simulate SQLAlchemy assigning IDs after flush()."""
+    created_objects = []
+    def add_side_effect(obj):
+        created_objects.append(obj)
+    async def flush_side_effect():
+        for i, obj in enumerate(created_objects):
+            if hasattr(obj, "document_id"):
+                obj.document_id = i + 1
+    mock_db.add.side_effect = add_side_effect
+    mock_db.flush.side_effect = flush_side_effect
+
+def test_upload_single_document_success(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_none,
+    get_fake_s3_context_class,
+):
+    async def override_get_current_user():
+        return mock_current_user
+    async def override_get_db():
+        yield mock_db_execute_none
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+    setup_document_flush(mock_db_execute_none)
+
+    mock_s3 = AsyncMock()
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+
+    with patch('routers.projects.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project), \
+         patch('routers.projects.get_s3_client', return_value=fake_s3):
+
+        response = client.post(
+            "/project/1/documents",
+            files=[("files", ("test.txt", b"hello world", "text/plain"))]
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["uploaded_count"] == 1
+    assert data["documents"][0]["document_id"] == 1
+    assert "test-bucket" in data["documents"][0]["document_url"]
+    
+    mock_s3.put_object.assert_awaited_once()
+    mock_db_execute_none.add.assert_called_once()
+    
+    app.dependency_overrides.clear()
