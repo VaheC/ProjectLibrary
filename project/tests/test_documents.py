@@ -349,3 +349,27 @@ def test_delete_document_success(
     mock_db_execute_document_present.delete.assert_awaited_once()
     
     app.dependency_overrides.clear()
+
+def test_delete_document_not_found(
+    client,
+    mock_current_user,
+    mock_db_execute_none,
+):
+    """
+    Uses mock_db_execute_none which returns None.
+    The route should immediately return 404.
+    """
+    async def override_get_current_user():
+        return mock_current_user
+    async def override_get_db():
+        yield mock_db_execute_none
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    response = client.delete("/document/999")
+
+    assert response.status_code == 404
+    assert "Document not found" in response.json()["detail"]
+    
+    app.dependency_overrides.clear()
