@@ -786,3 +786,14 @@ def test_invite_user_success(
     
     mock_db_execute_invite_success.add.assert_called_once()
 
+def test_invite_user_forbidden(
+    client_with_forbidden_project,
+):
+    # Participants are not allowed to invite others (require_owner=True)
+    response = client_with_forbidden_project.post(
+        "/project/1/invite",
+        params={"user": "someuser"}
+    )
+
+    assert response.status_code == 403
+    assert "do not have access" in response.json()["detail"]
