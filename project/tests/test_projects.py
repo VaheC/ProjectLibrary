@@ -1,4 +1,11 @@
 import pytest
+import os
+from unittest.mock import patch, AsyncMock, MagicMock
+from botocore.exceptions import ClientError
+from fastapi import HTTPException
+from main import app
+from db.db_session import get_db
+from dependencies.auth import get_current_user
 
 
 #################### post-project ####################
@@ -300,3 +307,55 @@ def test_put_project_info_duplicate_name(
 
     assert response.status_code == 400
     assert "A project with this name already exists" in response.json()["detail"]
+
+#################### delete-/project/{project_id} ####################
+
+def test_delete_project_success_with_documents(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    get_fake_s3_context_class
+):
+    """
+    Owner deletes a project that has documents.
+    S3 files should be deleted, and the DB row should be deleted.
+    """
+    async def override_get_current_user():
+        return mock_current_user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    mock_db = MagicMock()
+    doc1 = MagicMock()
+    doc1.document_url = f"https://{os.environ['AWS_S3_BUCKET']}.s3.{os.environ['AWS_REGION']}.amazonaws.com/projects/1/doc1.pdf"
+    
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [doc1]
+    mock_db.execute = AsyncMock(return_value=result)
+    mock_db.delete = AsyncMock()
+
+    async def override_get_db():
+        yield mock_db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    mock_s3 = AsyncMock()
+
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+    with patch(
+        'routers.projects.get_accessible_project', 
+        new_callable=AsyncMock, 
+        return_value=mock_accessible_project
+    ), patch('routers.projects.get_s3_client', return_value=fake_s3):
+        
+        response = client.delete("/project/1")
+
+    assert response.status_code == 200
+    assert "deleted successfully" in response.json()["message"]
+
+    mock_s3.delete_object.assert_awaited_once()
+    mock_db.delete.assert_awaited_once()
+    app.dependency_overrides.clear()
+
+
+
