@@ -110,8 +110,9 @@ def test_download_document_s3_error(
     get_fake_s3_context_class,
 ):
     """
-    The document exists and the user has access, but S3 fails 
-    (e.g., the file was manually deleted from the AWS console).
+    The document exists in the DB and the user has access, 
+    but the physical file is missing from S3 (NoSuchKey).
+    The route correctly returns 404.
     """
     async def override_get_current_user():
         return mock_current_user
@@ -128,15 +129,20 @@ def test_download_document_s3_error(
     )
     fake_s3 = get_fake_s3_context_class(mock_s3)
 
-    with patch(
-        'routers.documents.get_accessible_project', 
-        new_callable=AsyncMock, 
-        return_value=mock_accessible_project
-    ), patch('routers.documents.get_s3_client', return_value=fake_s3):
+    with patch('routers.documents.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project), \
+         patch('routers.documents.get_s3_client', return_value=fake_s3):
         
         response = client.get("/document/10")
 
-    assert response.status_code == 500
-    assert "Failed" in response.json()["detail"] or "S3" in response.json()["detail"]
+    # The route catches NoSuchKey and returns 404
+    assert response.status_code == 404
+    
+    # Verify the error message mentions the file or storage
+    detail = response.json()["detail"].lower()
+    assert "not found" in detail or "file" in detail or "s3" in detail
     
     app.dependency_overrides.clear()
+
+#################### put-document/{document_id} ####################
+
+
