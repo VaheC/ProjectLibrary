@@ -808,3 +808,16 @@ def test_invite_user_project_not_found(
 
     assert response.status_code == 404
     assert "Project not found" in response.json()["detail"]
+
+def test_invite_user_not_found_in_db(
+    client_with_accessible_project_and_mock_db,
+):
+    response = client_with_accessible_project_and_mock_db.post(
+        "/project/1/invite",
+        params={"user": "ghost_user"}
+    )
+
+    assert response.status_code == 404
+    assert "User not found" in response.json()["detail"]
+
+
