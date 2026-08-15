@@ -188,3 +188,13 @@ def test_get_project_info_not_found(
     )
 
     assert response.status_code == 404
+
+def test_get_project_info_forbidden(
+    client_with_forbidden_project,
+):
+    response = client_with_forbidden_project.get(
+        "/project/1/info"
+    )
+
+    assert response.status_code == 403
+    assert "You do not have access to this project" in response.json()["detail"]
