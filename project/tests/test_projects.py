@@ -665,3 +665,14 @@ def test_upload_documents_forbidden(
 
     assert response.status_code == 403
     assert "do not have access" in response.json()["detail"]
+
+def test_upload_documents_not_found(
+    client_with_inaccessible_project,
+):
+    response = client_with_inaccessible_project.post(
+        "/project/999/documents",
+        files=[("files", ("test.txt", b"data", "text/plain"))]
+    )
+
+    assert response.status_code == 404
+    assert "Project not found" in response.json()["detail"]
