@@ -11,6 +11,7 @@ os.environ["AWS_REGION"] = "us-east-1"
 os.environ["AWS_S3_BUCKET"] = "test-bucket"
 
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -345,6 +346,33 @@ def client_with_inaccessible_project(
         'routers.projects.get_accessible_project',
         new_callable=AsyncMock,
         return_value=None,
+    ):
+        yield client
+
+    app.dependency_overrides.clear()
+
+@pytest.fixture()
+def client_with_forbidden_project(
+    client,
+    mock_current_user,
+):
+    """
+    Overrides auth and patches get_accessible_project
+    to raise 403 Forbidden.
+    """
+
+    async def override_get_current_user():
+        return mock_current_user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    with patch(
+        'routers.projects.get_accessible_project',
+        new_callable=AsyncMock,
+        side_effect=HTTPException(
+            status_code=403,
+            detail="You do not have access to this project",
+        ),
     ):
         yield client
 
