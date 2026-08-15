@@ -246,3 +246,25 @@ def test_update_document_forbidden(
     assert "do not have access" in response.json()["detail"]
     
     app.dependency_overrides.clear()
+
+def test_update_document_missing_file(
+    client,
+    mock_current_user,
+    mock_db_execute_document_present,
+):
+    """
+    FastAPI catches the missing required 'file' form field before hitting the route.
+    """
+    async def override_get_current_user():
+        return mock_current_user
+    async def override_get_db():
+        yield mock_db_execute_document_present
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    response = client.put("/document/10")
+
+    assert response.status_code == 422
+    
+    app.dependency_overrides.clear()
