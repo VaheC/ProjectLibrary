@@ -797,3 +797,14 @@ def test_invite_user_forbidden(
 
     assert response.status_code == 403
     assert "do not have access" in response.json()["detail"]
+
+def test_invite_user_project_not_found(
+    client_with_inaccessible_project,
+):
+    response = client_with_inaccessible_project.post(
+        "/project/999/invite",
+        params={"user": "someuser"}
+    )
+
+    assert response.status_code == 404
+    assert "Project not found" in response.json()["detail"]
