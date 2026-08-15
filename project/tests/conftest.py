@@ -540,3 +540,126 @@ def client_with_accessible_project_and_documents(
         yield client
 
     app.dependency_overrides.clear()
+
+@pytest.fixture()
+def mock_db_execute_invite_success():
+    """
+    DB mock for successful invite:
+    1. First query (find user) returns a user object.
+    2. Second query (check shared project) returns None.
+    """
+    db = MagicMock()
+
+    invited_user = MagicMock()
+    invited_user.user_id = 2
+    invited_user.username = 'inviteduser'
+
+    user_result = MagicMock()
+    user_result.scalar_one_or_none.return_value = invited_user
+
+    shared_result = MagicMock()
+    shared_result.scalar_one_or_none.return_value = None
+
+    # side_effect makes db.execute return user_result first, then shared_result
+    db.execute = AsyncMock(side_effect=[user_result, shared_result])
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    db.delete = AsyncMock()
+
+    return db
+
+@pytest.fixture()
+def client_with_invite_success_db(
+    client, mock_current_user, mock_accessible_project, mock_db_execute_invite_success
+):
+    async def override_get_current_user(): return mock_current_user
+    async def override_get_db(): yield mock_db_execute_invite_success
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    with patch('routers.projects.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project):
+        yield client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def mock_db_execute_invite_self():
+    """
+    DB mock for inviting yourself:
+    First query returns a user with the SAME user_id as the current user.
+    """
+    db = MagicMock()
+    self_user = MagicMock()
+    self_user.user_id = 1  # Matches mock_current_user.user_id
+    self_user.username = 'existinguser'
+    
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = self_user
+    
+    db.execute = AsyncMock(return_value=result)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    db.delete = AsyncMock()
+    return db
+
+@pytest.fixture()
+def client_with_invite_self_db(
+    client, mock_current_user, mock_accessible_project, mock_db_execute_invite_self
+):
+    async def override_get_current_user(): return mock_current_user
+    async def override_get_db(): yield mock_db_execute_invite_self
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    with patch('routers.projects.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project):
+        yield client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def mock_db_execute_user_already_shared():
+    """
+    DB mock for already shared user:
+    1. First query (find user) returns a user.
+    2. Second query (check shared) returns a SharedProject object.
+    """
+    db = MagicMock()
+
+    invited_user = MagicMock()
+    invited_user.user_id = 2
+
+    user_result = MagicMock()
+    user_result.scalar_one_or_none.return_value = invited_user
+
+    shared_project = MagicMock()
+    shared_result = MagicMock()
+    shared_result.scalar_one_or_none.return_value = shared_project
+
+    db.execute = AsyncMock(side_effect=[user_result, shared_result])
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    db.delete = AsyncMock()
+
+    return db
+
+@pytest.fixture()
+def client_with_already_shared_db(
+    client, mock_current_user, mock_accessible_project, mock_db_execute_user_already_shared
+):
+    async def override_get_current_user(): return mock_current_user
+    async def override_get_db(): yield mock_db_execute_user_already_shared
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    with patch('routers.projects.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project):
+        yield client
+    app.dependency_overrides.clear()
