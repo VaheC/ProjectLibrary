@@ -687,3 +687,21 @@ def mock_db_execute_document_present():
     db.delete = AsyncMock()
 
     return db
+
+class FakeS3Body:
+    """
+    Simulates the 'Body' object returned by S3's get_object.
+    Supports both .read() and async iteration (for StreamingResponse).
+    """
+    def __init__(self, content: bytes):
+        self.content = content
+
+    async def read(self, *args, **kwargs):
+        return self.content
+
+    async def __aiter__(self):
+        yield self.content
+
+@pytest.fixture()
+def get_fake_s3_body_class():
+    return FakeS3Body
