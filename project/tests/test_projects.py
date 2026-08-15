@@ -542,3 +542,13 @@ def test_get_project_documents_not_found(
 
     assert response.status_code == 404
     assert "Project not found" in response.json()["detail"]
+
+def test_get_project_documents_forbidden(
+    client_with_forbidden_project,
+):
+    response = client_with_forbidden_project.get(
+        "/project/1/documents"
+    )
+
+    assert response.status_code == 403
+    assert "do not have access" in response.json()["detail"]
