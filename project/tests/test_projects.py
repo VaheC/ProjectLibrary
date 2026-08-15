@@ -284,3 +284,19 @@ def test_put_project_info_forbidden(
     )
     assert response.status_code == 403
     assert "do not have access" in response.json()["detail"]
+
+def test_put_project_info_duplicate_name(
+    client_with_accessible_project_and_duplicate_name,
+):
+    payload = {
+        "name": "Existing Name",
+        "description": "This is a valid description."
+    }
+    
+    response = client_with_accessible_project_and_duplicate_name.put(
+        "/project/1/info",
+        json=payload,
+    )
+
+    assert response.status_code == 400
+    assert "A project with this name already exists" in response.json()["detail"]
