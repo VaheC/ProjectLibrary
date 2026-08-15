@@ -373,3 +373,28 @@ def test_delete_document_not_found(
     assert "Document not found" in response.json()["detail"]
     
     app.dependency_overrides.clear()
+
+def test_delete_document_forbidden(
+    client,
+    mock_current_user,
+    mock_db_execute_document_present,
+):
+    """
+    The document exists, but the user is a Participant.
+    The route requires Owner privileges, so it returns 403.
+    """
+    async def override_get_current_user():
+        return mock_current_user
+    async def override_get_db():
+        yield mock_db_execute_document_present
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    with patch('routers.documents.get_accessible_project', new_callable=AsyncMock, side_effect=HTTPException(status_code=403, detail="You do not have access to this project")):
+        response = client.delete("/document/10")
+
+    assert response.status_code == 403
+    assert "do not have access" in response.json()["detail"]
+    
+    app.dependency_overrides.clear()
