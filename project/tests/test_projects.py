@@ -105,4 +105,26 @@ def test_post_project_short_description(
         in response.json()["detail"]
     )
 
+@pytest.mark.parametrize(
+    'project_data',
+    [
+        {
+            'name': 'project',
+            'description': 'The project relates to construction.'
+        }
+    ]
+)
+def test_post_project_existing_project(
+    client_with_project_db_and_auth,
+    project_data
+):
+    response = client_with_project_db_and_auth.post(
+        "/project",
+        json=project_data,
+    )
 
+    assert response.status_code == 400
+    assert (
+        "A project with this name already exists"
+        in response.json()["detail"]
+    )
