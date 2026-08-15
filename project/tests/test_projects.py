@@ -586,8 +586,11 @@ def test_upload_single_document_success(
     mock_s3 = AsyncMock()
     fake_s3 = get_fake_s3_context_class(mock_s3)
 
-    with patch('routers.projects.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project), \
-         patch('routers.projects.get_s3_client', return_value=fake_s3):
+    with patch(
+        'routers.projects.get_accessible_project', 
+        new_callable=AsyncMock, 
+        return_value=mock_accessible_project
+    ), patch('routers.projects.get_s3_client', return_value=fake_s3):
 
         response = client.post(
             "/project/1/documents",
@@ -603,5 +606,51 @@ def test_upload_single_document_success(
     
     mock_s3.put_object.assert_awaited_once()
     mock_db_execute_none.add.assert_called_once()
+    
+    app.dependency_overrides.clear()
+
+def test_upload_multiple_documents_success(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_none,
+    get_fake_s3_context_class,
+):
+    async def override_get_current_user():
+        return mock_current_user
+    async def override_get_db():
+        yield mock_db_execute_none
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+    setup_document_flush(mock_db_execute_none)
+
+    mock_s3 = AsyncMock()
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+
+    with patch(
+        'routers.projects.get_accessible_project', 
+        new_callable=AsyncMock, 
+        return_value=mock_accessible_project
+    ), patch('routers.projects.get_s3_client', return_value=fake_s3):
+        
+        response = client.post(
+            "/project/1/documents",
+            files=[
+                ("files", ("file1.txt", b"content1", "text/plain")),
+                ("files", ("file2.pdf", b"content2", "application/pdf"))
+            ]
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["uploaded_count"] == 2
+    assert len(data["documents"]) == 2
+    assert data["documents"][0]["document_id"] == 1
+    assert data["documents"][1]["document_id"] == 2
+
+    assert mock_s3.put_object.await_count == 2
+    assert mock_db_execute_none.add.call_count == 2
     
     app.dependency_overrides.clear()
