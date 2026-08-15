@@ -146,3 +146,17 @@ def test_get_projects_success(
     assert "message" in data
     assert data["count"] == 3
     assert len(data["projects"]) == 3
+
+def test_get_projects_no_project(
+    client_with_empty_projects_db_and_auth
+):
+    response = client_with_empty_projects_db_and_auth.get(
+        "/projects"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "message" in data
+    assert data["count"] == 0
+    assert len(data["projects"]) == 0
