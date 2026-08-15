@@ -51,6 +51,7 @@ def mock_db_execute_none():
     db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.rollback = AsyncMock()
+    db.delete = AsyncMock()
 
     return db
 
@@ -96,6 +97,7 @@ def mock_db_execute_present():
     db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.rollback = AsyncMock()
+    db.delete = AsyncMock()
 
     return db
 
@@ -141,6 +143,7 @@ def mock_db_execute_project_present():
     db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.rollback = AsyncMock()
+    db.delete = AsyncMock()
 
     return db
 
@@ -227,6 +230,7 @@ def mock_db_execute_projects_present():
     db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.rollback = AsyncMock()
+    db.delete = AsyncMock()
 
     return db
 
@@ -430,6 +434,7 @@ def mock_db_execute_duplicate_name():
     db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.rollback = AsyncMock()
+    db.delete = AsyncMock()
 
     return db
 
@@ -463,3 +468,18 @@ def client_with_accessible_project_and_duplicate_name(
         yield client
 
     app.dependency_overrides.clear()
+
+class FakeS3Context:
+    """Simulates `async with get_s3_client() as s3_client:`"""
+    def __init__(self, mock_s3):
+        self.mock_s3 = mock_s3
+
+    async def __aenter__(self):
+        return self.mock_s3
+
+    async def __aexit__(self, *args):
+        pass
+
+@pytest.fixture():
+def get_fake_s3_context_class():
+    return FakeS3Context
