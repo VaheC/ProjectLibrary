@@ -96,7 +96,6 @@ async def create_project(
 
     db.add(new_project)
 
-    # Flush to get new_project.project_id before creating SharedProject.
     await db.flush()
 
     owner_share = SharedProject(
