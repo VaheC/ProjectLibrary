@@ -330,3 +330,22 @@ def client_with_accessible_project(
         yield client
 
     app.dependency_overrides.clear()
+
+@pytest.fixture()
+def client_with_inaccessible_project(
+    client,
+    mock_current_user,
+):
+    async def override_get_current_user():
+        return mock_current_user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    with patch(
+        'routers.projects.get_accessible_project',
+        new_callable=AsyncMock,
+        return_value=None,
+    ):
+        yield client
+
+    app.dependency_overrides.clear()
