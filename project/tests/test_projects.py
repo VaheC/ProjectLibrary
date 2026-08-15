@@ -389,3 +389,14 @@ def test_delete_project_forbidden(
     assert response.status_code == 403
     assert "do not have access" in response.json()["detail"]
 
+def test_delete_project_not_found(
+    client_with_inaccessible_project,
+):
+    """
+    User tries to delete a project that doesn't exist.
+    get_accessible_project raises 404.
+    """
+    response = client_with_inaccessible_project.delete("/project/999")
+
+    assert response.status_code == 404
+    assert "Project not found" in response.json()["detail"]
