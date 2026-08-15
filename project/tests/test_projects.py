@@ -686,3 +686,46 @@ def test_upload_documents_missing_files_field(
     )
 
     assert response.status_code == 422
+
+def test_upload_documents_s3_error_returns_500(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_none,
+    get_fake_s3_context_class,
+):
+    async def override_get_current_user():
+        return mock_current_user
+    
+    async def override_get_db():
+        yield mock_db_execute_none
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    mock_s3 = AsyncMock()
+    # Simulate S3 failing immediately
+    mock_s3.put_object.side_effect = ClientError(
+        {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}, 
+        "PutObject"
+    )
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+
+    with patch(
+        'routers.projects.get_accessible_project', 
+        new_callable=AsyncMock, 
+        return_value=mock_accessible_project
+    ), patch('routers.projects.get_s3_client', return_value=fake_s3):
+        
+        response = client.post(
+            "/project/1/documents",
+            files=[("files", ("test.txt", b"data", "text/plain"))]
+        )
+
+    assert response.status_code == 500
+    assert "Failed to upload file to S3" in response.json()["detail"]
+    
+    # DB operations should not happen if S3 fails
+    mock_db_execute_none.add.assert_not_called()
+    
+    app.dependency_overrides.clear()
