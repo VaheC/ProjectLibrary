@@ -830,3 +830,14 @@ def test_invite_self(
 
     assert response.status_code == 400
     assert "cannot invite yourself" in response.json()["detail"]
+
+def test_invite_user_already_shared(
+    client_with_already_shared_db,
+):
+    response = client_with_already_shared_db.post(
+        "/project/1/invite",
+        params={"user": "inviteduser"}
+    )
+
+    assert response.status_code == 400
+    assert "already has access" in response.json()["detail"]
