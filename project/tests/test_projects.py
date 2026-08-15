@@ -256,3 +256,17 @@ def test_put_project_info_short_description(
     )
     assert response.status_code == 400
     assert "at least 10 characters" in response.json()["detail"]
+
+def test_put_project_info_not_found(
+    client_with_inaccessible_project
+):
+    valid_payload = {
+        "name": "Valid Name",
+        "description": "This is a valid description."
+    }
+    response = client_with_inaccessible_project.put(
+        "/project/999/info",
+        json=valid_payload
+    )
+    assert response.status_code == 404
+    assert "Project not found" in response.json()["detail"]
