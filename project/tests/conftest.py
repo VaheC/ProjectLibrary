@@ -186,3 +186,66 @@ def client_with_project_db_and_auth_with_unique_project(
     yield client
 
     app.dependency_overrides.clear()
+
+@pytest.fixture()
+def mock_db_execute_projects_present():
+    """
+    Mocked async database session that returns all projects.
+    """
+    db = MagicMock()
+
+    projects_list = []
+
+    for i in range(3):
+        project = MagicMock()
+        project.project_id = i + 1
+        project.name = f'project{i + 1}'
+        project.description = f'The project relates to construction {i + 1}.'
+        project.user_id = 1
+        project.created_at = datetime(2030, 12, 25 + i, tzinfo=timezone.utc)
+
+        project.user = MagicMock()
+        project.user.username = 'existinguser'
+
+        project.documents = []
+        for j in range(i + 1):
+            document = MagicMock()
+            document.document_id = j + 1
+            document.document_url = f'url_{j + 1}'
+            project.documents.append(document)
+
+        projects_list.append(project)
+
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = projects_list
+
+    db.execute = AsyncMock(return_value=result)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+
+    return db
+
+@pytest.fixture()
+def client_with_all_projects_db_and_auth(
+    client,
+    mock_db_execute_projects_present,
+    mock_current_user,
+):
+    """
+    Overrides both the database and authentication dependencies.
+    """
+
+    async def override_get_db():
+        yield mock_db_execute_projects_present
+
+    async def override_get_current_user():
+        return mock_current_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    yield client
+
+    app.dependency_overrides.clear()
