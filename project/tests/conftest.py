@@ -380,3 +380,86 @@ def client_with_forbidden_project(
         yield client
 
     app.dependency_overrides.clear()
+
+@pytest.fixture()
+def client_with_accessible_project_and_mock_db(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_none,
+):
+    """
+    For PUT success case:
+    1. Patches get_accessible_project to return a project (user has access).
+    2. Overrides DB to return None for the duplicate name check (name is unique).
+    """
+    async def override_get_current_user():
+        return mock_current_user
+
+    async def override_get_db():
+        yield mock_db_execute_none
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    with patch(
+        'routers.projects.get_accessible_project',
+        new_callable=AsyncMock,
+        return_value=mock_accessible_project,
+    ):
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def mock_db_execute_duplicate_name():
+    """
+    Mocked DB that returns an existing project when checking for duplicate names.
+    """
+    db = MagicMock()
+
+    existing_project = MagicMock()
+    existing_project.project_id = 99
+
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = existing_project
+
+    db.execute = AsyncMock(return_value=result)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+
+    return db
+
+
+@pytest.fixture()
+def client_with_accessible_project_and_duplicate_name(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_duplicate_name,
+):
+    """
+    For PUT duplicate name case:
+    1. Patches get_accessible_project to return a project (user has access).
+    2. Overrides DB to return an existing project (duplicate name found).
+    """
+    async def override_get_current_user():
+        return mock_current_user
+
+    async def override_get_db():
+        yield mock_db_execute_duplicate_name
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    with patch(
+        'routers.projects.get_accessible_project',
+        new_callable=AsyncMock,
+        return_value=mock_accessible_project,
+    ):
+        yield client
+
+    app.dependency_overrides.clear()
