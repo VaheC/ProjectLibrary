@@ -160,3 +160,22 @@ def test_get_projects_no_project(
     assert "message" in data
     assert data["count"] == 0
     assert len(data["projects"]) == 0
+
+#################### project/{project_id}/info ####################
+
+def test_get_project_info_success(
+    client_with_accessible_project,
+):
+    response = client_with_accessible_project.get(
+        "/project/1/info"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["project_id"] == 1
+    assert data["name"] == "Test Project"
+    assert data["description"] == "A test project description."
+    assert data["owner_id"] == 1
+    assert data["owner_username"] == "existinguser"
+    assert len(data["documents"]) == 2
