@@ -820,4 +820,13 @@ def test_invite_user_not_found_in_db(
     assert response.status_code == 404
     assert "User not found" in response.json()["detail"]
 
+def test_invite_self(
+    client_with_invite_self_db,
+):
+    response = client_with_invite_self_db.post(
+        "/project/1/invite",
+        params={"user": "existinguser"}
+    )
 
+    assert response.status_code == 400
+    assert "cannot invite yourself" in response.json()["detail"]
