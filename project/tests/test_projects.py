@@ -400,3 +400,50 @@ def test_delete_project_not_found(
 
     assert response.status_code == 404
     assert "Project not found" in response.json()["detail"]
+
+def test_delete_project_s3_generic_error(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    get_fake_s3_context_class
+):
+    """
+    S3 deletion fails with a generic error (e.g., AccessDenied).
+    The route should catch it and return 500.
+    """
+    async def override_get_current_user():
+        return mock_current_user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    mock_db = MagicMock()
+    doc1 = MagicMock()
+    doc1.document_url = "https://test.com/doc.pdf"
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [doc1]
+    mock_db.execute = AsyncMock(return_value=result)
+    mock_db.delete = AsyncMock()
+
+    async def override_get_db():
+        yield mock_db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    mock_s3 = AsyncMock()
+    mock_s3.delete_object.side_effect = ClientError(
+        error_response={"Error": {"Code": "AccessDenied", "Message": "Access Denied"}},
+        operation_name="DeleteObject"
+    )
+
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+    with patch('routers.projects.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project), \
+         patch('routers.projects.get_s3_client', return_value=fake_s3):
+        
+        response = client.delete("/project/1")
+
+    assert response.status_code == 500
+    assert "Failed to delete project files from S3" in response.json()["detail"]
+    
+    mock_db.delete.assert_not_awaited()
+
+    app.dependency_overrides.clear()
