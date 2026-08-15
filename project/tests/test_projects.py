@@ -515,3 +515,20 @@ def test_get_project_documents_success(
 
     assert data[1]["document_id"] == 20
     assert "doc2.pdf" in data[1]["document_url"]
+
+def test_get_project_documents_empty(
+    client_with_accessible_project_and_mock_db,
+):
+    """
+    The client_with_accessible_project_and_mock_db fixture uses 
+    mock_db_execute_none, which returns [] for scalars().all().
+    """
+    response = client_with_accessible_project_and_mock_db.get(
+        "/project/1/documents"
+    )
+
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 0
