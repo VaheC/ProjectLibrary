@@ -494,3 +494,24 @@ def test_delete_project_s3_nosuchkey_error(
     mock_db.delete.assert_awaited_once()
 
     app.dependency_overrides.clear()
+
+#################### get-/project/{project_id}/documents ####################
+
+def test_get_project_documents_success(
+    client_with_accessible_project_and_documents,
+):
+    response = client_with_accessible_project_and_documents.get(
+        "/project/1/documents"
+    )
+
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 2
+    
+    assert data[0]["document_id"] == 10
+    assert "doc1.pdf" in data[0]["document_url"]
+
+    assert data[1]["document_id"] == 20
+    assert "doc2.pdf" in data[1]["document_url"]
