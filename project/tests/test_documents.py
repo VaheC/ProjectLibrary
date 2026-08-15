@@ -268,3 +268,47 @@ def test_update_document_missing_file(
     assert response.status_code == 422
     
     app.dependency_overrides.clear()
+
+def test_update_document_s3_upload_error(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_document_present,
+    get_fake_s3_context_class,
+):
+    """
+    The document exists and user has access, but S3 fails to upload the new file.
+    The old file should NOT be deleted.
+    """
+    async def override_get_current_user():
+        return mock_current_user
+    async def override_get_db():
+        yield mock_db_execute_document_present
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    mock_s3 = AsyncMock()
+    # Simulate S3 upload failing
+    mock_s3.put_object.side_effect = ClientError(
+        {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}},
+        "PutObject"
+    )
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+
+    with patch(
+        'routers.documents.get_accessible_project', 
+        new_callable=AsyncMock, 
+        return_value=mock_accessible_project
+    ), patch('routers.documents.get_s3_client', return_value=fake_s3):
+        
+        response = client.put(
+            "/document/10",
+            files={"file": ("new_file.txt", b"new content", "text/plain")}
+        )
+
+    assert response.status_code == 500
+    
+    mock_s3.delete_object.assert_not_awaited()
+    
+    app.dependency_overrides.clear()
