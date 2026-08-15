@@ -532,3 +532,13 @@ def test_get_project_documents_empty(
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 0
+
+def test_get_project_documents_not_found(
+    client_with_inaccessible_project,
+):
+    response = client_with_inaccessible_project.get(
+        "/project/999/documents"
+    )
+
+    assert response.status_code == 404
+    assert "Project not found" in response.json()["detail"]
