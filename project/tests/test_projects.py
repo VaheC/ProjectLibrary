@@ -220,3 +220,21 @@ def test_put_project_info_success(
     assert data["name"] == "Updated Project Name"
     assert data["description"] == "This is a long enough description for the test."
     assert data["project_id"] == 1
+
+@pytest.mark.parametrize(
+    'payload',
+    [
+        {"name": "ab", "description": "This is a valid description."},
+        {"name": "   ", "description": "This is a valid description."},
+    ]
+)
+def test_put_project_info_short_name(
+    client_with_accessible_project_and_mock_db,
+    payload,
+):
+    response = client_with_accessible_project_and_mock_db.put(
+        "/project/1/info",
+        json=payload,
+    )
+    assert response.status_code == 400
+    assert "at least 3 characters" in response.json()["detail"]
