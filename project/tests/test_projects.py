@@ -161,7 +161,7 @@ def test_get_projects_no_project(
     assert data["count"] == 0
     assert len(data["projects"]) == 0
 
-#################### project/{project_id}/info ####################
+#################### get-project/{project_id}/info ####################
 
 def test_get_project_info_success(
     client_with_accessible_project,
@@ -198,3 +198,25 @@ def test_get_project_info_forbidden(
 
     assert response.status_code == 403
     assert "You do not have access to this project" in response.json()["detail"]
+
+#################### put-project/{project_id}/info ####################
+
+def test_put_project_info_success(
+    client_with_accessible_project_and_mock_db,
+):
+    payload = {
+        "name": "Updated Project Name",
+        "description": "This is a long enough description for the test."
+    }
+    
+    response = client_with_accessible_project_and_mock_db.put(
+        "/project/1/info",
+        json=payload,
+    )
+
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert data["name"] == "Updated Project Name"
+    assert data["description"] == "This is a long enough description for the test."
+    assert data["project_id"] == 1
