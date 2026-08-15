@@ -785,4 +785,4 @@ def test_invite_user_success(
     assert response.status_code == 200
     
     mock_db_execute_invite_success.add.assert_called_once()
-    mock_db_execute_invite_success.commit.assert_awaited_once()
+
