@@ -179,3 +179,12 @@ def test_get_project_info_success(
     assert data["owner_id"] == 1
     assert data["owner_username"] == "existinguser"
     assert len(data["documents"]) == 2
+
+def test_get_project_info_not_found(
+    client_with_inaccessible_project,
+):
+    response = client_with_inaccessible_project.get(
+        "/project/999/info"
+    )
+
+    assert response.status_code == 404
