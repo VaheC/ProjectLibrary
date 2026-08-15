@@ -663,3 +663,27 @@ def client_with_already_shared_db(
     with patch('routers.projects.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project):
         yield client
     app.dependency_overrides.clear()
+
+@pytest.fixture()
+def mock_db_execute_document_present():
+    """
+    Mocked DB that returns a document when queried by document_id.
+    """
+    db = MagicMock()
+
+    document = MagicMock()
+    document.document_id = 10
+    document.project_id = 1  # Matches mock_accessible_project.project_id
+    document.document_url = "https://test-bucket.s3.us-east-1.amazonaws.com/projects/1/doc1.pdf"
+
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = document
+
+    db.execute = AsyncMock(return_value=result)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    db.delete = AsyncMock()
+
+    return db
