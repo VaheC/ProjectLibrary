@@ -357,5 +357,23 @@ def test_delete_project_success_with_documents(
     mock_db.delete.assert_awaited_once()
     app.dependency_overrides.clear()
 
+def test_delete_project_success_without_documents(
+    client_with_accessible_project_and_mock_db,
+    get_fake_s3_context_class
+):
+    """
+    Owner deletes a project with no documents.
+    S3 client should NOT be called, but DB delete should happen.
+    """
+    
+    mock_s3 = AsyncMock()
 
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+    with patch('routers.projects.get_s3_client', return_value=fake_s3):
+        response = client_with_accessible_project_and_mock_db.delete("/project/1")
+
+    assert response.status_code == 200
+    assert "deleted successfully" in response.json()["message"]
+    
+    mock_s3.delete_object.assert_not_awaited()
 
