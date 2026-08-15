@@ -44,6 +44,31 @@ def test_post_project_success(
     assert data["owner_id"] == 1
     assert data["owner_username"] == "existinguser"
     
+@pytest.mark.parametrize(
+    'project_data',
+    [
+        {
+            'name': 'fi',
+            'description': 'The project relates to finance.'
+        },
+        {
+            'name': '     ',
+            'description': 'The project relates to art.'
+        },
+        {
+            'name': '',
+            'description': 'The project relates to art.'
+        }
+    ]
+)
+def test_post_project_short_name(
+    client_with_project_db_and_auth_with_unique_project,
+    project_data
+):
+    response = client_with_project_db_and_auth_with_unique_project.post(
+        "/project",
+        json=project_data,
+    )
 
-
-
+    assert response.status_code == 400
+    assert "Project name must be at least 3 characters long" in response.json()["detail"]
