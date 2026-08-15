@@ -483,3 +483,60 @@ class FakeS3Context:
 @pytest.fixture()
 def get_fake_s3_context_class():
     return FakeS3Context
+
+@pytest.fixture()
+def mock_db_execute_with_documents():
+    """
+    Mocked DB that returns a list of documents when queried.
+    """
+    db = MagicMock()
+
+    doc1 = MagicMock()
+    doc1.document_id = 10
+    doc1.document_url = "https://test-bucket.s3.us-east-1.amazonaws.com/projects/1/doc1.pdf"
+
+    doc2 = MagicMock()
+    doc2.document_id = 20
+    doc2.document_url = "https://test-bucket.s3.us-east-1.amazonaws.com/projects/1/doc2.pdf"
+
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [doc1, doc2]
+
+    db.execute = AsyncMock(return_value=result)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    db.delete = AsyncMock()
+
+    return db
+
+@pytest.fixture()
+def client_with_accessible_project_and_documents(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_with_documents,
+):
+    """
+    For GET documents success case:
+    1. Patches get_accessible_project to return a project (user has access).
+    2. Overrides DB to return 2 mock documents.
+    """
+    async def override_get_current_user():
+        return mock_current_user
+
+    async def override_get_db():
+        yield mock_db_execute_with_documents
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    with patch(
+        'routers.projects.get_accessible_project',
+        new_callable=AsyncMock,
+        return_value=mock_accessible_project,
+    ):
+        yield client
+
+    app.dependency_overrides.clear()
