@@ -134,10 +134,8 @@ def test_download_document_s3_error(
         
         response = client.get("/document/10")
 
-    # The route catches NoSuchKey and returns 404
     assert response.status_code == 404
     
-    # Verify the error message mentions the file or storage
     detail = response.json()["detail"].lower()
     assert "not found" in detail or "file" in detail or "s3" in detail
     
@@ -145,4 +143,44 @@ def test_download_document_s3_error(
 
 #################### put-document/{document_id} ####################
 
+def test_update_document_success(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_document_present,
+    get_fake_s3_context_class,
+):
+    async def override_get_current_user():
+        return mock_current_user
+    async def override_get_db():
+        yield mock_db_execute_document_present
 
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    mock_s3 = AsyncMock()
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+
+    with patch(
+        'routers.documents.get_accessible_project', 
+        new_callable=AsyncMock, 
+        return_value=mock_accessible_project
+    ), patch('routers.documents.get_s3_client', return_value=fake_s3):
+
+        response = client.put(
+            "/document/10",
+            files={"file": ("new_file.txt", b"new content", "text/plain")}
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["document_id"] == 10
+    
+    mock_s3.put_object.assert_awaited_once()
+    
+    mock_s3.delete_object.assert_awaited_once_with(
+        Bucket="test-bucket",
+        Key="projects/1/doc1.pdf"
+    )
+    
+    app.dependency_overrides.clear()
