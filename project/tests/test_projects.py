@@ -238,3 +238,21 @@ def test_put_project_info_short_name(
     )
     assert response.status_code == 400
     assert "at least 3 characters" in response.json()["detail"]
+
+@pytest.mark.parametrize(
+    'payload',
+    [
+        {"name": "Valid Name", "description": "short"},
+        {"name": "Valid Name", "description": "          "}
+    ]
+)
+def test_put_project_info_short_description(
+    client_with_accessible_project_and_mock_db,
+    payload,
+):
+    response = client_with_accessible_project_and_mock_db.put(
+        "/project/1/info",
+        json=payload,
+    )
+    assert response.status_code == 400
+    assert "at least 10 characters" in response.json()["detail"]
