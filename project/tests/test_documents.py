@@ -312,3 +312,40 @@ def test_update_document_s3_upload_error(
     mock_s3.delete_object.assert_not_awaited()
     
     app.dependency_overrides.clear()
+
+#################### delete-document/{document_id} ####################
+
+def test_delete_document_success(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+    mock_db_execute_document_present,
+    get_fake_s3_context_class,
+):
+    async def override_get_current_user():
+        return mock_current_user
+    
+    async def override_get_db():
+        yield mock_db_execute_document_present
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    mock_s3 = AsyncMock()
+    fake_s3 = get_fake_s3_context_class(mock_s3)
+
+    with patch('routers.documents.get_accessible_project', new_callable=AsyncMock, return_value=mock_accessible_project), \
+         patch('routers.documents.get_s3_client', return_value=fake_s3):
+        
+        response = client.delete("/document/10")
+
+    assert response.status_code == 200
+    
+    mock_s3.delete_object.assert_awaited_once_with(
+        Bucket="test-bucket",
+        Key="projects/1/doc1.pdf"
+    )
+    
+    mock_db_execute_document_present.delete.assert_awaited_once()
+    
+    app.dependency_overrides.clear()
