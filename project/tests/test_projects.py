@@ -654,3 +654,14 @@ def test_upload_multiple_documents_success(
     assert mock_db_execute_none.add.call_count == 2
     
     app.dependency_overrides.clear()
+
+def test_upload_documents_forbidden(
+    client_with_forbidden_project,
+):
+    response = client_with_forbidden_project.post(
+        "/project/1/documents",
+        files=[("files", ("test.txt", b"data", "text/plain"))]
+    )
+
+    assert response.status_code == 403
+    assert "do not have access" in response.json()["detail"]
