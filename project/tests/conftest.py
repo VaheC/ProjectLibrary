@@ -13,7 +13,7 @@ os.environ["AWS_S3_BUCKET"] = "test-bucket"
 from fastapi.testclient import TestClient
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from main import app
 from db.db_session import get_db
@@ -273,5 +273,60 @@ def client_with_empty_projects_db_and_auth(
     app.dependency_overrides[get_current_user] = override_get_current_user
 
     yield client
+
+    app.dependency_overrides.clear()
+
+@pytest.fixture()
+def mock_accessible_project():
+    """
+    Returns a mock project object that simulates
+    what get_accessible_project would return.
+    """
+    project = MagicMock()
+    project.project_id = 1
+    project.name = 'Test Project'
+    project.description = 'A test project description.'
+    project.user_id = 1
+    project.created_at = datetime(2030, 12, 25, tzinfo=timezone.utc)
+
+    # Mock the owner relationship
+    project.user = MagicMock()
+    project.user.username = 'existinguser'
+
+    # Mock the documents relationship
+    document1 = MagicMock()
+    document1.document_id = 1
+    document1.document_url = 'https://example.com/doc1.pdf'
+
+    document2 = MagicMock()
+    document2.document_id = 2
+    document2.document_url = 'https://example.com/doc2.pdf'
+
+    project.documents = [document1, document2]
+
+    return project
+
+@pytest.fixture()
+def client_with_accessible_project(
+    client,
+    mock_current_user,
+    mock_accessible_project,
+):
+    """
+    Overrides auth and patches get_accessible_project
+    to return a mock project.
+    """
+
+    async def override_get_current_user():
+        return mock_current_user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    with patch(
+        'routers.projects.get_accessible_project',
+        new_callable=AsyncMock,
+        return_value=mock_accessible_project,
+    ):
+        yield client
 
     app.dependency_overrides.clear()
