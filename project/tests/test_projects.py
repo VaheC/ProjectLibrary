@@ -8,7 +8,7 @@ from db.db_session import get_db
 from dependencies.auth import get_current_user
 
 
-#################### post-project ####################
+#################### post-projects ####################
 @pytest.mark.parametrize(
     'project_data',
     [
@@ -18,7 +18,7 @@ from dependencies.auth import get_current_user
         }
     ]
 )
-def test_post_project_success(
+def test_post_projects_success(
     client_with_project_db_and_auth_with_unique_project,
     mock_db_execute_none,
     project_data
@@ -39,7 +39,7 @@ def test_post_project_success(
     mock_db_execute_none.flush.side_effect = flush_side_effect
 
     response = client_with_project_db_and_auth_with_unique_project.post(
-        "/project",
+        "/projects",
         json=project_data,
     )
 
@@ -70,7 +70,7 @@ def test_post_project_success(
         }
     ]
 )
-def test_post_project_short_name(
+def test_post_projects_short_name(
     client_with_project_db_and_auth_with_unique_project,
     project_data
 ):
@@ -99,7 +99,7 @@ def test_post_project_short_name(
         }
     ]
 )
-def test_post_project_short_description(
+def test_post_projects_short_description(
     client_with_project_db_and_auth_with_unique_project,
     project_data
 ):
@@ -128,7 +128,7 @@ def test_post_project_existing_project(
     project_data
 ):
     response = client_with_project_db_and_auth.post(
-        "/project",
+        "/projects",
         json=project_data,
     )
 
@@ -138,7 +138,7 @@ def test_post_project_existing_project(
         in response.json()["detail"]
     )
 
-#################### post-projects ####################
+#################### get-projects ####################
 
 def test_get_projects_success(
     client_with_all_projects_db_and_auth,
