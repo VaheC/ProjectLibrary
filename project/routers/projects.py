@@ -47,7 +47,7 @@ from config.config import settings
 router = APIRouter(tags=["Projects"])
 
 
-@router.post("/project", response_model=ProjectResponse)
+@router.post("/projects", response_model=ProjectResponse)
 async def create_project(
     project_data: ProjectCreateRequest,
     current_user: TokenData = Depends(get_current_user),
