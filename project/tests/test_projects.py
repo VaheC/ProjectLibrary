@@ -75,7 +75,7 @@ def test_post_projects_short_name(
     project_data
 ):
     response = client_with_project_db_and_auth_with_unique_project.post(
-        "/project",
+        "/projects",
         json=project_data,
     )
 
@@ -104,7 +104,7 @@ def test_post_projects_short_description(
     project_data
 ):
     response = client_with_project_db_and_auth_with_unique_project.post(
-        "/project",
+        "/projects",
         json=project_data,
     )
 
