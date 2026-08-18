@@ -1,6 +1,8 @@
 import aioboto3
-
 from config.config import settings
+import os
+
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 def get_s3_client():
@@ -35,3 +37,22 @@ def get_s3_key_from_url(document_url: str) -> str:
     )
 
     return document_url.split(prefix)[-1]
+
+def is_image_file(filename: str, content_type: str) -> bool:
+    """Checks if a file is an image based on MIME type or extension."""
+    if content_type and content_type.startswith("image/"):
+        return True
+
+    ext = os.path.splitext(filename or "")[1].lower()
+    return ext in IMAGE_EXTENSIONS
+
+
+def build_s3_key(filename: str, content_type: str, project_id: int) -> str:
+    """
+    Builds the S3 object key based on file type.
+
+    - Images  -> resized/{project_id}/{filename}
+    - Others  -> uploads/{project_id}/{filename}
+    """
+    folder = "resized" if is_image_file(filename, content_type) else "uploads"
+    return f"{folder}/{project_id}/{filename}"
