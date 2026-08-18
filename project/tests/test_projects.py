@@ -327,8 +327,8 @@ def test_delete_project_success_with_documents(
 
     mock_db = MagicMock()
     doc1 = MagicMock()
-    doc1.document_url = f"https://{os.environ['AWS_S3_BUCKET']}.s3.{os.environ['AWS_REGION']}.amazonaws.com/projects/1/doc1.pdf"
-    
+    doc1.document_url = f"https://{os.environ['AWS_S3_BUCKET']}.s3.{os.environ['AWS_REGION']}.amazonaws.com/uploads/1/doc1.pdf"
+
     result = MagicMock()
     result.scalars.return_value.all.return_value = [doc1]
     mock_db.execute = AsyncMock(return_value=result)
