@@ -1,6 +1,6 @@
 import os
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite://"
+os.environ["DATABASE_URL"] = "database-url-here"
 os.environ["SECRET_KEY"] = "test-secret-key-that-is-at-least-32-bytes-long"
 os.environ["ALGORITHM"] = "HS256"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
