@@ -4,17 +4,14 @@ from fastapi import (
     Depends,
     UploadFile,
     File,
-    Query,
+    Query
 )
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
-from typing import List, Annotated
+from typing import List
 from botocore.exceptions import ClientError
-
-import os
-import uuid
 
 from db.db import Project, SharedProject, User, Document
 from db.db_session import get_db
@@ -24,12 +21,12 @@ from models.projects import (
     ProjectResponse,
     ProjectDetailResponse,
     ProjectsListResponse,
-    ProjectUpdateRequest,
+    ProjectUpdateRequest
 )
 
 from models.documents import (
     DocumentResponse,
-    DocumentUploadResponse,
+    DocumentUploadResponse
 )
 
 from models.auth import TokenData
@@ -39,6 +36,7 @@ from dependencies.project_access import get_accessible_project
 from dependencies.bucket_client import (
     get_s3_client,
     get_s3_key_from_url,
+    build_s3_key
 )
 
 from config.config import settings
@@ -597,15 +595,14 @@ async def upload_project_documents(
     try:
         async with get_s3_client() as s3_client:
             for file in files:
-                file_extension = os.path.splitext(file.filename or "")[1]
-
-                s3_key = (
-                    f"projects/{project_id}/"
-                    f"{uuid.uuid4()}"
-                    f"{file_extension}"
-                )
-
+                filename = file.filename or "unnamed_file"
                 file_content = await file.read()
+
+                s3_key = build_s3_key(
+                    filename=filename,
+                    content_type=file.content_type,
+                    project_id=project_id,
+                )
 
                 await s3_client.put_object(
                     Bucket=settings.AWS_S3_BUCKET,
