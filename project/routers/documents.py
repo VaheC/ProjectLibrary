@@ -13,8 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from botocore.exceptions import ClientError
 
 import io
-import os
-import uuid
 
 from db.db import Document
 from db.db_session import get_db
@@ -27,6 +25,7 @@ from dependencies.project_access import get_accessible_project
 from dependencies.bucket_client import (
     get_s3_client,
     get_s3_key_from_url,
+    build_s3_key
 )
 
 from config.config import settings
@@ -144,15 +143,14 @@ async def update_document(
 
     old_s3_key = get_s3_key_from_url(document.document_url)
 
-    file_extension = os.path.splitext(file.filename or "")[1]
-
-    new_s3_key = (
-        f"projects/{document.project_id}/"
-        f"{uuid.uuid4()}"
-        f"{file_extension}"
-    )
-
+    filename = file.filename or "unnamed_file"
     file_content = await file.read()
+
+    new_s3_key = build_s3_key(
+        filename=filename,
+        content_type=file.content_type,
+        project_id=document.project_id,
+    )
 
     try:
         async with get_s3_client() as s3_client:
