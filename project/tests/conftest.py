@@ -674,7 +674,7 @@ def mock_db_execute_document_present():
     document = MagicMock()
     document.document_id = 10
     document.project_id = 1  # Matches mock_accessible_project.project_id
-    document.document_url = "https://test-bucket.s3.us-east-1.amazonaws.com/projects/1/doc1.pdf"
+    document.document_url = "https://test-bucket.s3.us-east-1.amazonaws.com/uploads/1/doc1.pdf"
 
     result = MagicMock()
     result.scalar_one_or_none.return_value = document
