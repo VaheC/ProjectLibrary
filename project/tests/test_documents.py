@@ -177,10 +177,10 @@ def test_update_document_success(
     assert data["document_id"] == 10
     
     mock_s3.put_object.assert_awaited_once()
-    
+
     mock_s3.delete_object.assert_awaited_once_with(
         Bucket="test-bucket",
-        Key="projects/1/doc1.pdf"
+        Key="uploads/1/doc1.pdf"
     )
     
     app.dependency_overrides.clear()
@@ -340,10 +340,10 @@ def test_delete_document_success(
         response = client.delete("/document/10")
 
     assert response.status_code == 200
-    
+
     mock_s3.delete_object.assert_awaited_once_with(
         Bucket="test-bucket",
-        Key="projects/1/doc1.pdf"
+        Key="uploads/1/doc1.pdf"
     )
     
     mock_db_execute_document_present.delete.assert_awaited_once()
