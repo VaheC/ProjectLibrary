@@ -7,9 +7,6 @@ asyncpg
 PyJWT
 aioboto3
 python-multipart
-
 pytest
-pytest-asyncio
 httpx
-aiosqlite
 greenlet
