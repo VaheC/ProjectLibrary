@@ -32,4 +32,4 @@ jobs:
 
       # Step 4: Run tests with asyncio auto mode enabled
       - name: Run tests
-        run: pytest --asyncio-mode=auto
+        run: pytest
