@@ -240,20 +240,26 @@ async def delete_document(
     )
 
     s3_key = get_s3_key_from_url(document.document_url)
+    filename = s3_key.split("/")[-1]
+    
+    keys_to_delete = [
+        f"uploads/{document.project_id}/{filename}",
+        f"resized/{document.project_id}/{filename}"
+    ]
 
     try:
         async with get_s3_client() as s3_client:
-            try:
-                await s3_client.delete_object(
-                    Bucket=settings.AWS_S3_BUCKET,
-                    Key=s3_key,
-                )
-            except ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code")
-
-                # If the file is already missing, continue DB deletion.
-                if error_code != "NoSuchKey":
-                    raise
+            for key in keys_to_delete:
+                try:
+                    await s3_client.delete_object(
+                        Bucket=settings.AWS_S3_BUCKET,
+                        Key=key,
+                    )
+                except ClientError as e:
+                    error_code = e.response.get("Error", {}).get("Code")
+                    # If the file is already missing in one folder, continue to the next.
+                    if error_code != "NoSuchKey":
+                        raise
 
     except ClientError as e:
         raise HTTPException(
