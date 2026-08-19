@@ -143,24 +143,17 @@ async def update_document(
     )
 
     old_s3_key = get_s3_key_from_url(document.document_url)
+    old_filename = old_s3_key.split("/")[-1]
 
-    filename = old_s3_key.split("/")[-1]
-    # filename = file.filename or "unnamed_file"
-
-    # Check both possible locations to prevent orphaned files
-    old_keys_to_delete = [
-        f"uploads/{document.project_id}/{filename}",
-        f"resized/{document.project_id}/{filename}"
-    ]
-
+    new_filename = file.filename or "unnamed_file"
     file_content = await file.read()
 
     # Where to physically upload (always 'uploads/' to trigger Lambda)
-    new_upload_key = get_upload_s3_key(filename, document.project_id)
+    new_upload_key = get_upload_s3_key(new_filename, document.project_id)
 
     # Where the file will ultimately reside (used for the DB URL)
     new_final_key = get_final_s3_key(
-        filename=filename,
+        filename=new_filename,
         content_type=file.content_type,
         project_id=document.project_id,
         file_size=len(file_content),
@@ -168,7 +161,7 @@ async def update_document(
 
     try:
         async with get_s3_client() as s3_client:
-            # Upload to 'uploads/' to trigger Lambda
+            # 1. Upload the new file to 'uploads/'
             await s3_client.put_object(
                 Bucket=settings.AWS_S3_BUCKET,
                 Key=new_upload_key,
@@ -176,15 +169,33 @@ async def update_document(
                 ContentType=file.content_type or "application/octet-stream",
             )
 
-            # Try to remove old file from both possible locations.
-            for key in old_keys_to_delete:
-                try:
-                    await s3_client.delete_object(
-                        Bucket=settings.AWS_S3_BUCKET,
-                        Key=key,
-                    )
-                except ClientError:
-                    pass
+            # 2. Clean up the old file(s) intelligently
+            if old_filename != new_filename:
+                # The filename changed. Delete the old file from BOTH possible folders.
+                old_keys_to_delete = [
+                    f"uploads/{document.project_id}/{old_filename}",
+                    f"resized/{document.project_id}/{old_filename}"
+                ]
+                for key in old_keys_to_delete:
+                    try:
+                        await s3_client.delete_object(
+                            Bucket=settings.AWS_S3_BUCKET,
+                            Key=key,
+                        )
+                    except ClientError:
+                        pass
+            else:
+                # The filename is the same. The upload above already overwrote 
+                # the file in 'uploads/'. However, if the OLD file was in 'resized/', 
+                # we must delete it so it doesn't linger as an orphan.
+                if old_s3_key.startswith("resized/"):
+                    try:
+                        await s3_client.delete_object(
+                            Bucket=settings.AWS_S3_BUCKET,
+                            Key=f"resized/{document.project_id}/{old_filename}",
+                        )
+                    except ClientError:
+                        pass
 
     except ClientError as e:
         raise HTTPException(
