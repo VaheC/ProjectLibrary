@@ -144,7 +144,15 @@ async def update_document(
 
     old_s3_key = get_s3_key_from_url(document.document_url)
 
-    filename = file.filename or "unnamed_file"
+    filename = old_s3_key.split("/")[-1]
+    # filename = file.filename or "unnamed_file"
+
+    # Check both possible locations to prevent orphaned files
+    old_keys_to_delete = [
+        f"uploads/{document.project_id}/{filename}",
+        f"resized/{document.project_id}/{filename}"
+    ]
+
     file_content = await file.read()
 
     # Where to physically upload (always 'uploads/' to trigger Lambda)
@@ -168,14 +176,15 @@ async def update_document(
                 ContentType=file.content_type or "application/octet-stream",
             )
 
-            # Try to remove old file.
-            try:
-                await s3_client.delete_object(
-                    Bucket=settings.AWS_S3_BUCKET,
-                    Key=old_s3_key,
-                )
-            except ClientError:
-                pass
+            # Try to remove old file from both possible locations.
+            for key in old_keys_to_delete:
+                try:
+                    await s3_client.delete_object(
+                        Bucket=settings.AWS_S3_BUCKET,
+                        Key=key,
+                    )
+                except ClientError:
+                    pass
 
     except ClientError as e:
         raise HTTPException(
