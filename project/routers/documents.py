@@ -25,7 +25,8 @@ from dependencies.project_access import get_accessible_project
 from dependencies.bucket_client import (
     get_s3_client,
     get_s3_key_from_url,
-    build_s3_key
+    get_upload_s3_key,
+    get_final_s3_key,
 )
 
 from config.config import settings
@@ -146,31 +147,34 @@ async def update_document(
     filename = file.filename or "unnamed_file"
     file_content = await file.read()
 
-    new_s3_key = build_s3_key(
+    # Where to physically upload (always 'uploads/' to trigger Lambda)
+    new_upload_key = get_upload_s3_key(filename, document.project_id)
+
+    # Where the file will ultimately reside (used for the DB URL)
+    new_final_key = get_final_s3_key(
         filename=filename,
         content_type=file.content_type,
         project_id=document.project_id,
+        file_size=len(file_content),
     )
 
     try:
         async with get_s3_client() as s3_client:
-            # Upload replacement file first.
+            # Upload to 'uploads/' to trigger Lambda
             await s3_client.put_object(
                 Bucket=settings.AWS_S3_BUCKET,
-                Key=new_s3_key,
+                Key=new_upload_key,
                 Body=file_content,
                 ContentType=file.content_type or "application/octet-stream",
             )
 
             # Try to remove old file.
-            # If this fails, the update itself still succeeded.
             try:
                 await s3_client.delete_object(
                     Bucket=settings.AWS_S3_BUCKET,
                     Key=old_s3_key,
                 )
             except ClientError:
-                # In production, log this warning.
                 pass
 
     except ClientError as e:
@@ -179,10 +183,11 @@ async def update_document(
             detail=f"Failed to update file in S3: {str(e)}",
         )
 
+    # Store the FINAL location in the database
     document.document_url = (
         f"https://{settings.AWS_S3_BUCKET}"
         f".s3.{settings.AWS_REGION}.amazonaws.com/"
-        f"{new_s3_key}"
+        f"{new_final_key}"
     )
 
     await db.flush()
