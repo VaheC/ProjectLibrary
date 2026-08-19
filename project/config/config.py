@@ -17,6 +17,6 @@ class Settings:
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
     AWS_REGION = os.getenv("AWS_REGION")
     AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET")
-    MAX_SIZE_BYTES = os.getenv("MAX_SIZE_BYTES")
+    MAX_SIZE_BYTES = int(os.getenv("MAX_SIZE_BYTES"))
 
 settings = Settings()
