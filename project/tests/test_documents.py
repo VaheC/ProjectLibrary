@@ -178,10 +178,14 @@ def test_update_document_success(
     
     mock_s3.put_object.assert_awaited_once()
 
-    mock_s3.delete_object.assert_awaited_once_with(
-        Bucket="test-bucket",
-        Key="uploads/1/doc1.pdf"
-    )
+    # mock_s3.delete_object.assert_awaited_once_with(
+    #     Bucket="test-bucket",
+    #     Key="uploads/1/doc1.pdf"
+    # )
+
+    assert mock_s3.delete_object.await_count == 2
+    mock_s3.delete_object.assert_any_await(Bucket="test-bucket", Key="uploads/1/doc1.pdf")
+    mock_s3.delete_object.assert_any_await(Bucket="test-bucket", Key="resized/1/doc1.pdf")
     
     app.dependency_overrides.clear()
 
@@ -341,10 +345,14 @@ def test_delete_document_success(
 
     assert response.status_code == 200
 
-    mock_s3.delete_object.assert_awaited_once_with(
-        Bucket="test-bucket",
-        Key="uploads/1/doc1.pdf"
-    )
+    # mock_s3.delete_object.assert_awaited_once_with(
+    #     Bucket="test-bucket",
+    #     Key="uploads/1/doc1.pdf"
+    # )
+
+    assert mock_s3.delete_object.await_count == 2
+    mock_s3.delete_object.assert_any_await(Bucket="test-bucket", Key="uploads/1/doc1.pdf")
+    mock_s3.delete_object.assert_any_await(Bucket="test-bucket", Key="resized/1/doc1.pdf")
     
     mock_db_execute_document_present.delete.assert_awaited_once()
     
