@@ -9,6 +9,7 @@ os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-key"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["AWS_S3_BUCKET"] = "test-bucket"
+os.environ["MAX_SIZE_BYTES"] = "2097152"
 
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
