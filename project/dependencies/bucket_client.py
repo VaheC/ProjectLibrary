@@ -42,17 +42,24 @@ def is_image_file(filename: str, content_type: str) -> bool:
     """Checks if a file is an image based on MIME type or extension."""
     if content_type and content_type.startswith("image/"):
         return True
-
     ext = os.path.splitext(filename or "")[1].lower()
     return ext in IMAGE_EXTENSIONS
 
 
-def build_s3_key(filename: str, content_type: str, project_id: int) -> str:
+def get_upload_s3_key(filename: str, project_id: int) -> str:
     """
-    Builds the S3 object key based on file type.
+    Returns the S3 key where the file is physically uploaded.
+    All files go to 'uploads/' to trigger the Lambda function.
+    """
+    return f"uploads/{project_id}/{filename}"
 
-    - Images  -> resized/{project_id}/{filename}
-    - Others  -> uploads/{project_id}/{filename}
+
+def get_final_s3_key(filename: str, content_type: str, project_id: int, file_size: int) -> str:
     """
-    folder = "resized" if is_image_file(filename, content_type) else "uploads"
-    return f"{folder}/{project_id}/{filename}"
+    Returns the S3 key where the file will ultimately reside.
+    Large images will be moved to 'resized/' by Lambda.
+    Everything else stays in 'uploads/'.
+    """
+    if is_image_file(filename, content_type) and file_size > settings.MAX_SIZE_BYTES:
+        return f"resized/{project_id}/{filename}"
+    return f"uploads/{project_id}/{filename}"
