@@ -2,7 +2,7 @@ import aioboto3
 from config.config import settings
 import os
 
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff"}
 
 
 def get_s3_client():
