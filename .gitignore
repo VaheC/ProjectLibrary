@@ -222,3 +222,6 @@ raw_code/
 project_raw/
 tests_raw/
 project_no_resize/
+
+#files
+lambda_func.py
