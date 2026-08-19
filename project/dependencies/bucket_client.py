@@ -60,6 +60,6 @@ def get_final_s3_key(filename: str, content_type: str, project_id: int, file_siz
     Large images will be moved to 'resized/' by Lambda.
     Everything else stays in 'uploads/'.
     """
-    if is_image_file(filename, content_type) and file_size > settings.MAX_SIZE_BYTES:
+    if is_image_file(filename, content_type) and file_size > int(settings.MAX_SIZE_BYTES):
         return f"resized/{project_id}/{filename}"
     return f"uploads/{project_id}/{filename}"
