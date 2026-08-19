@@ -35,8 +35,8 @@ from dependencies.auth import get_current_user
 from dependencies.project_access import get_accessible_project
 from dependencies.bucket_client import (
     get_s3_client,
-    get_s3_key_from_url,
-    build_s3_key
+    get_upload_s3_key,
+    get_final_s3_key,
 )
 
 from config.config import settings
@@ -598,25 +598,30 @@ async def upload_project_documents(
                 filename = file.filename or "unnamed_file"
                 file_content = await file.read()
 
-                s3_key = build_s3_key(
-                    filename=filename,
-                    content_type=file.content_type,
-                    project_id=project_id,
-                )
+                # Where to physically upload (always 'uploads/' to trigger Lambda)
+                upload_key = get_upload_s3_key(filename, project_id)
 
                 await s3_client.put_object(
                     Bucket=settings.AWS_S3_BUCKET,
-                    Key=s3_key,
+                    Key=upload_key,
                     Body=file_content,
                     ContentType=file.content_type or "application/octet-stream",
                 )
 
-                uploaded_s3_keys.append(s3_key)
+                uploaded_s3_keys.append(upload_key)
+
+                # Where the file will ultimately reside (used for the DB URL)
+                final_key = get_final_s3_key(
+                    filename=filename,
+                    content_type=file.content_type,
+                    project_id=project_id,
+                    file_size=len(file_content),
+                )
 
                 document_url = (
                     f"https://{settings.AWS_S3_BUCKET}"
                     f".s3.{settings.AWS_REGION}.amazonaws.com/"
-                    f"{s3_key}"
+                    f"{final_key}"
                 )
 
                 new_document = Document(
