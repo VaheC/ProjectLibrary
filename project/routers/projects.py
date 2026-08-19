@@ -34,6 +34,7 @@ from models.auth import TokenData
 from dependencies.auth import get_current_user
 from dependencies.project_access import get_accessible_project
 from dependencies.bucket_client import (
+    get_s3_key_from_url,
     get_s3_client,
     get_upload_s3_key,
     get_final_s3_key,
@@ -363,18 +364,23 @@ async def delete_project(
             async with get_s3_client() as s3_client:
                 for document in documents:
                     s3_key = get_s3_key_from_url(document.document_url)
-
-                    try:
-                        await s3_client.delete_object(
-                            Bucket=settings.AWS_S3_BUCKET,
-                            Key=s3_key,
-                        )
-                    except ClientError as e:
-                        error_code = e.response.get("Error", {}).get("Code")
-
-                        # If the file is already absent, continue deletion.
-                        if error_code != "NoSuchKey":
-                            raise
+                    filename = s3_key.split("/")[-1]
+                    
+                    keys_to_delete = [
+                        f"uploads/{project_id}/{filename}",
+                        f"resized/{project_id}/{filename}"
+                    ]
+                    
+                    for key in keys_to_delete:
+                        try:
+                            await s3_client.delete_object(
+                                Bucket=settings.AWS_S3_BUCKET,
+                                Key=key,
+                            )
+                        except ClientError as e:
+                            error_code = e.response.get("Error", {}).get("Code")
+                            if error_code != "NoSuchKey":
+                                raise
 
         except ClientError as e:
             raise HTTPException(
