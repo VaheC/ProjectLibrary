@@ -16,7 +16,7 @@ from models.auth import (
     LoginResponse,
 )
 
-from dependencies.jwt import create_access_token
+from dependencies.token import create_access_token
 
 from config.config import settings
 
