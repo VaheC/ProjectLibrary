@@ -30,6 +30,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r project/requirements.txt
 
-      # Step 4: Run tests with asyncio auto mode enabled
+      # Step 4: Run tests
       - name: Run tests
         run: pytest
